@@ -142,13 +142,13 @@ def get_data_iam(experiment, occlusion = None, bars_type = None, one_hot = False
 def get_data(experiment, occlusion = None, bars_type = None, one_hot = False):
     
     # Load MNIST data, as part of TensorFlow.
-    (train_images, train_labels), (test_images, test_labels) = emnist.load_data(type='balanced')
+    #(train_images, train_labels), (test_images, test_labels) = emnist.load_data(type='balanced')
     #Change to load MNIST pre-processing database 
-    # data = np.load(pre.preprocess_emnist())
-    # train_images = data['train_images']
-    # train_labels = data['train_labels']
-    # test_images = data['test_images']
-    # test_labels = data['test_labels']
+    data = np.load(pre.preprocess_emnist())
+    train_images = data['train_images']
+    train_labels = data['train_labels']
+    test_images = data['test_images']
+    test_labels = data['test_labels']
 
     all_data = np.concatenate((train_images, test_images), axis=0)
     all_labels = np.concatenate((train_labels, test_labels), axis= 0)

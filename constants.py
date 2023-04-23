@@ -28,6 +28,7 @@ testing_path = 'test'
 memories_path = 'memories'
 full_prefix = ''
 partial_prefix = ''
+learn_params_prefix ='learn_params'
 
 def occlusion_suffix(occlusion):
     return '' if occlusion is None else '-occ_' + str(int(round(occlusion*100))).zfill(3)
@@ -40,6 +41,9 @@ def bars_type_suffix(bars_type):
 def tolerance_suffix(tolerance):
     return '' if not tolerance else '-tol_' + str(tolerance).zfill(3)
 
+
+def learn_params_name():
+    return learn_params_prefix
 
 def filename(s, idx = None, occlusion = None, bars_type = None, tolerance = 0, extension = ''):
     """ Returns a file name in run_path directory with a given extension and an index
@@ -204,6 +208,16 @@ precision_idx = 0
 recall_idx = 1
 n_measures = 2
 
+accuracy_idx = 2
+entropy_idx = 3
+n_measures = 4
+response_size_idx = 6
+
+mem_conf_prefix = 'mem_conftrix'
+
+def memory_conftrix_filename(fill, fold):
+    prefix = mem_conf_prefix + '-fll_' + str(fill).zfill(3)
+    return data_filename(prefix, fold)
 
 def mean_idx(m):
     return m
