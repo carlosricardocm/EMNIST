@@ -11,12 +11,19 @@ The code was written in Python 3.8.10 and was run on an Alienware Aurora R5 comp
 
 ### Requeriments
 The following libraries need to be installed beforehand:
-* joblib
-* matplotlib
-* numpy
-* png
-* TensorFlow 2.4.1
-* extra-keras-datasets 1.2.0 <- from where the EMNIST dataset was imported
+* joblib (conda install joblib)
+* matplotlib (conda install matplotlib)
+* numpy (conda install numpy)
+* png (pip install pypng)
+* TensorFlow 2.4.1_ (conda install tensorflow)
+* extra-keras-datasets 1.2.0 <- from where the EMNIST dataset was imported (pip install extra-keras-datasets)
+* smac3 version 1.4 <- this version only works (follow the installation guide from https://github.com/automl/SMAC3 )
+* opencv (conda install opencv)
+* tqdm (conda install tqdm)
+
+* create folder databases/IAM/ascii, inside folder unzip the files ascii.tgz from https://fki.tic.heia-fr.ch/databases/download-the-iam-handwriting-database 
+* create folder databases/IAM/lines, inside folder unzip the files lines.tgz from https://fki.tic.heia-fr.ch/databases/download-the-iam-handwriting-database 
+
 
 The experiments were run using the Anaconda 3 distribution. This [link](https://www.osetc.com/en/how-to-install-anaconda-on-ubuntu-16-04-17-04-18-04.html) may be a good resource to install Anaconda, and these other two links ([link1](https://github.com/machinecurve/extra_keras_datasets#installation-procedure) and [link2](https://stackoverflow.com/a/43729857)) show how to install the ``extra-keras-datasets`` library in your system. You may clone the ``conda`` environment in the file [entropic_associative_mem_env.yml](https://github.com/eam-experiments/EMNIST/blob/main/entropic_associative_mem_env.yml), used to run the experiments, with the instruction ``$ conda env create -f entropic_associative_mem_env.yml``. The environment is activated with ``$ conda activate eam``.
 
