@@ -115,7 +115,7 @@ def get_data_iam(experiment, occlusion = None, bars_type = None, one_hot = False
     
     all_data = []
     #contador = 0
-    for line in data['iamdataset']:
+    for line in data['iam_filename']:#['iamdataset']:
         for image in line:
               #if contador == 100:
               #    break

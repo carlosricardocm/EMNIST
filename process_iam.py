@@ -11,6 +11,7 @@ import math
 from extra_keras_datasets import emnist
 
 import numpy as np
+import random
 import pandas as pd
 import sys
 
@@ -667,14 +668,27 @@ def get_best_ams():
 
         # Recognition
         response_size = 0
-        
-        for features in triam_rounded:            
+        candidates = []
+        for feature in triam_rounded:            
             memories = []
+            weights = {}
             for k in ams:
-                recognized, weight = ams[k].recognize(features)
-                                
-                print("Datos recognized",recognized)
-                print("Datos weight",weight)
+                recognized, weight = ams[k].recognize(feature)
+                if recognized:
+                    memories.append(k)
+                    weights[k] = weight
+
+            if len(memories) == 0:
+                print("None Feature was recognized by any WAEM")
+            else:
+                l = get_label(memories, weights, entropy)
+                print("Datos recognized:", l)
+                candidates.append([l,feature])
+                
+
+        
+
+
         # for features, label in zip(tef_rounded, tel):
         #     correct = int(label)
 
@@ -685,6 +699,27 @@ def get_best_ams():
        
     else:
         return None
+
+
+def get_label(memories, weights = None, entropies = None):
+    if len(memories) == 1:
+        return memories[0]
+    random.shuffle(memories)
+    if (entropies is None) or (weights is None):
+        return memories[0]
+    else:
+        i = memories[0] 
+        entropy = entropies[i]
+        weight = weights[i]
+        penalty = entropy/weight if weight > 0 else float('inf')
+        for j in memories[1:]:
+            entropy = entropies[j]
+            weight = weights[j]
+            new_penalty = entropy/weight if weight > 0 else float('inf')
+            if new_penalty < penalty:
+                i = j
+                penalty = new_penalty
+        return i
 
 
 def proccess_line(pd_line, pd_words, iam_sources_path, destination_folder):
