@@ -15,6 +15,7 @@ from extra_keras_datasets import emnist
 
 
 import numpy as np
+import random
 import pandas as pd
 import sys
 import convnet
@@ -711,6 +712,27 @@ def get_best_ams():
     
   
     return None
+
+def get_label(memories, weights = None, entropies = None):
+    if len(memories) == 1:
+        return memories[0]
+    random.shuffle(memories)
+    if (entropies is None) or (weights is None):
+        return memories[0]
+    else:
+        i = memories[0] 
+        entropy = entropies[i]
+        weight = weights[i]
+        penalty = entropy/weight if weight > 0 else float('inf')
+        for j in memories[1:]:
+            entropy = entropies[j]
+            weight = weights[j]
+            new_penalty = entropy/weight if weight > 0 else float('inf')
+            if new_penalty < penalty:
+                i = j
+                penalty = new_penalty
+        return i
+
 
 def get_label(memories, weights = None, entropies = None):
     if len(memories) == 1:
