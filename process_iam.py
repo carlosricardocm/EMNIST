@@ -7,12 +7,17 @@ import matplotlib.pyplot as plt
 from sklearn import linear_model
 from scipy import ndimage
 
+import random
+import tensorflow as tf
 import math
 from extra_keras_datasets import emnist
+
+
 
 import numpy as np
 import pandas as pd
 import sys
+import convnet
 
 #SMAC for get best params for EAM's
 import SMAC_run_sameconfigforall as smac
@@ -621,11 +626,11 @@ def get_best_ams():
             suffix = constants.training_suffix
 
         #Aqui va un for sobre de todas las memorias y sus modelos
-        i = 0
+        fold = 0
         training_features_filename = prefix + constants.features_name + suffix
-        training_features_filename = constants.data_filename(training_features_filename, i)
+        training_features_filename = constants.data_filename(training_features_filename, fold)
         training_labels_filename = prefix + constants.labels_name + suffix
-        training_labels_filename = constants.data_filename(training_labels_filename, i)
+        training_labels_filename = constants.data_filename(training_labels_filename, fold)
 
         training_iam_features = os.path.join('runs', 'features-iam-training-000.npy') 
         
@@ -668,23 +673,64 @@ def get_best_ams():
         # Recognition
         response_size = 0
         
-        for features in triam_rounded:            
+        results = []
+
+        #Create Classifier from Neural Network for the comparation with ams results
+        snnet = convnet.ClassifierNeuralNetwork(constants.model_name, fold)
+
+        for feature in triam_rounded:            
             memories = []
+            weights = {}
             for k in ams:
-                recognized, weight = ams[k].recognize(features)
-                                
-                print("Datos recognized",recognized)
-                print("Datos weight",weight)
-        # for features, label in zip(tef_rounded, tel):
-        #     correct = int(label)
+                recognized, weight = ams[k].recognize(feature)
+                if recognized:
+                    memories.append(k)
+                    weights[k] = weight
+            #None IAM feature was recognized
+            if len(memories) == 0:
+                print("None Memory recognized the feature")
+                #results.append([None,snnet.classifier.predict(feature), feature])
+                #lsnnet = snnet.classifier.predict(feature)
+                #results.append([lwam,lsnnet], feature)                
+            else:
+                lwam = get_label(memories,weights,entropy) 
+                f = tf.constant([features])
 
-        #     memories = []
-        #         for k in ams:
-        #             recognized, weight = ams[k].recognize(features)
+                
+                               
+                labels = snnet.classifier.predict(f)
+                lsnnet = np.argmax(labels, axis=1)
+                #results.append([lwam,lsnnet[0]], feature)
+                if(lwam == lsnnet):
+                    f = tf.constant([features])
+                    img_decodificada = snnet.decoder.predict(f)
+                    cv2.imshow('img decodificada', img_decodificada)
+                    print("hasta aca")
 
-       
+                
+    
+  
+    return None
+
+def get_label(memories, weights = None, entropies = None):
+    if len(memories) == 1:
+        return memories[0]
+    random.shuffle(memories)
+    if (entropies is None) or (weights is None):
+        return memories[0]
     else:
-        return None
+        i = memories[0] 
+        entropy = entropies[i]
+        weight = weights[i]
+        penalty = entropy/weight if weight > 0 else float('inf')
+        for j in memories[1:]:
+            entropy = entropies[j]
+            weight = weights[j]
+            new_penalty = entropy/weight if weight > 0 else float('inf')
+            if new_penalty < penalty:
+                i = j
+                penalty = new_penalty
+        return i
 
 
 def proccess_line(pd_line, pd_words, iam_sources_path, destination_folder):

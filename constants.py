@@ -148,6 +148,8 @@ def produced_image_filename(dir, stage, idx, label):
 def produced_memory_filename(dir, msize, stage, idx, label):
     return memory_filename(dir, msize, stage, idx, label)
 
+def classifier_filename(name_prefix, fold):
+    return filename(name_prefix + classifier_suffix,  fold)
 
 features_prefix = 'features'
 experiment_defaul_suffix = ''
@@ -184,6 +186,10 @@ training_suffix = '-training'
 filling_suffix = '-filling'
 testing_suffix = '-testing'
 memory_suffix = '-memories'
+
+# Model suffixes.
+classifier_suffix = '-classifier'
+decoder_suffix = '-autoencoder'
 
 training_stages = 10
 

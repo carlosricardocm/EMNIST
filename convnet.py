@@ -625,3 +625,63 @@ def remember(experiment, occlusion = None, bars_type = None, tolerance = 0):
             Parallel(n_jobs=constants.n_jobs, verbose=5)( \
                 delayed(store_memories)(label, produced, features, constants.memories_directory(experiment, occlusion, bars_type, tolerance), i, j) \
                     for (produced, features, label) in zip(produced_images, mem_data, mem_labels))
+
+
+
+class ClassifierNeuralNetwork:
+    def __init__ (self, prefix, fold):
+        model_filename = constants.model_filename(prefix, fold)
+        model = tf.keras.models.load_model(model_filename )
+
+        input_enc = Input(shape=(img_columns, img_rows, 1)) #image 28X28X1
+        input_cla = Input(shape=(constants.domain)) #Features size domain (64)
+        encoded = get_encoder(input_enc)
+        classified = get_classifier(input_cla)
+        decoded = get_decoder(input_cla)
+
+        self.encoder = Model(inputs = input_enc, outputs = encoded)
+        self.classifier = Model(inputs = input_cla, outputs = classified)
+        self.decoder = Model(inputs= input_cla, outputs = decoded)
+
+        # with open('todo.txt', 'w') as f:
+        #     f.write(" \n AQUI EMPIEZA EL MODELO \n")
+        #     for id, layer in enumerate(model.layers):
+        #         name = str(layer.name) 
+        #         input = str(layer.input.shape)
+        #         output = str(layer.output.shape)
+                
+        #         f.write("ID: " + str(id) + " NAME: "+ name + " INPUT: " + input + "  OUTPUT: " + output + "\n" )
+            
+        #     f.write(" \n AQUI EMPIEZA EL DECODIFICADOR \n")
+
+        #     for id, layer in enumerate(self.decoder.layers):
+        #         name = str(layer.name) 
+        #         input = str(layer.input.shape)
+        #         output = str(layer.output.shape)
+                
+        #         f.write("ID: " + str(id) + " NAME: "+ name + " INPUT: " + input + "  OUTPUT: " + output + "\n")
+
+        #     f.write(" \n AQUI EMPIEZA EL CLASIFICADOR \n")
+
+        #     for id, layer in enumerate(self.classifier.layers):
+        #         name = str(layer.name) 
+        #         input = str(layer.input.shape)
+        #         output = str(layer.output.shape)
+                
+        #         f.write("ID: " + str(id) + " NAME: "+ name + " INPUT: " + input + "  OUTPUT: " + output + "\n")
+            
+        # f.close()
+
+        encoder_nlayers = 31
+        #Put weights for encoder
+        for from_layer, to_layer in zip(model.layers[1:encoder_nlayers+1], self.encoder.layers[1:]):
+            to_layer.set_weights(from_layer.get_weights())
+        #Put weights for decoder
+        for from_layer, to_layer in zip(model.layers[31:38], self.decoder.layers[1:8]):
+            to_layer.set_weights(from_layer.get_weights())
+        for from_layer, to_layer in zip(model.layers[40:44:2], self.decoder.layers[9:11]):
+            to_layer.set_weights(from_layer.get_weights())
+        #Put weights for classifier
+        for from_layer, to_layer in zip(model.layers[39:43:2], self.classifier.layers[1:3]):
+            to_layer.set_weights(from_layer.get_weights())
+                
