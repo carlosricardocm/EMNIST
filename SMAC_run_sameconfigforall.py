@@ -21,14 +21,14 @@ import random
 
 hl = 2.0 # cota superior de parametros iota, kappa
 maxtol = 64 # cota superior para parametro de tolerancia
-maxmemsize = 300 # cota superior del tamaño de memoria
+maxmemsize = 128 # cota superior del tamaño de memoria
 experiment = 1
 labels_x_memory = constants.labels_per_memory[experiment] # = 1
 n_memories = int(constants.n_labels/labels_x_memory) # = n_labels
 
 # Solucion inicial para empezar la busqueda
-prior_memsize = 23
-prior_tolerance = 17
+prior_memsize = 20
+prior_tolerance = 20
 prior_kappa = 0.00151258507990818
 prior_iota = 0.601543557593993
 
@@ -66,26 +66,30 @@ if not os.path.exists(os.path.join(os.getcwd(), statsfilename)):
 #cs = ConfigurationSpace(config)
 
 
-
-def get_label(memories, entropies = None):
-    # Random selection
-    if entropies is None:
-        i = random.atddrange(len(memories))
-        return memories[i]
+def get_label(memories, weights = None, entropies = None):
+    if len(memories) == 1:
+        return memories[0]
+    random.shuffle(memories)
+    if (entropies is None) or (weights is None):
+        return memories[0]
     else:
         i = memories[0]
         entropy = entropies[i]
-
+        weight = weights[i]
+        penalty = entropy/weight if weight > 0 else float('inf')
         for j in memories[1:]:
-            if entropy > entropies[j]:
+            entropy = entropies[j]
+            weight = weights[j]
+            new_penalty = entropy/weight if weight > 0 else float('inf')
+            if new_penalty < penalty:
                 i = j
-                entropy = entropies[i]
-    return i
+                penalty = new_penalty
+        return i
 
 # Función auxiliar a la función objetivo
 # Crea un sistema de memoria w-ams usando los parametros dados y lo evalua
 def get_wams_results(config, domain, lpm, trf, tef, trl, tel): #tolerance, sigma, iota, kappa):
-    # Round the values
+# Round the values
     max_value = trf.max()
     other_value = tef.max()
     max_value = max_value if max_value > other_value else other_value
@@ -95,13 +99,14 @@ def get_wams_results(config, domain, lpm, trf, tef, trl, tel): #tolerance, sigma
     min_value = min_value if min_value < other_value else other_value
 
     n_labels = constants.n_labels
-    nmems = int(n_labels/lpm)
-
+    nmems = n_labels#int(n_labels/lpm)
+    n_mems = nmems
     print("Num de memorias: {}".format(nmems))
 
     measures = np.zeros((constants.n_measures, nmems), dtype=np.float64)
     entropy = np.zeros((nmems, ), dtype=np.float64)
-    behaviour = np.zeros((constants.n_behaviours, ))
+    behaviour = np.zeros(
+        (n_mems, constants.n_behaviours), dtype=np.float64)#np.zeros((constants.n_behaviours, ))
 
     # Confusion matrix for calculating F1, precision and recall per memory.
     cms = np.zeros((nmems, 2, 2))
@@ -113,14 +118,12 @@ def get_wams_results(config, domain, lpm, trf, tef, trl, tel): #tolerance, sigma
     # Create the required associative memories.
     ams = dict.fromkeys(range(nmems))
     max_msize = 0 # para normalizacion
-
-
-    tolerance = config["tolerance"]
-    sigma = 0.2 #config[str(j)+"_sigma"]
-    iota = config["iota"]
-    kappa = config["kappa"]
-    msize = config["memory_size"]
     for j in ams:
+        tolerance = config["tolerance"]
+        sigma = 0.1 #config[str(j)+"_sigma"]
+        iota = config["iota"]
+        kappa = config["kappa"]
+        msize = config["memory_size"]
         if msize > max_msize:
             max_msize = msize
         ams[j] = AssociativeMemory(domain, msize, tolerance, sigma, iota, kappa)
@@ -129,7 +132,7 @@ def get_wams_results(config, domain, lpm, trf, tef, trl, tel): #tolerance, sigma
     tef_rounded = np.round((tef-min_value) * (max_msize - 1) / (max_value-min_value)).astype(np.int16)
     # Registration
     for features, label in zip(trf_rounded, trl):
-        i = int(label/lpm)
+        i = label#int(label/lpm)
         ams[i].register(features)
 
     # Calculate entropies
@@ -137,55 +140,73 @@ def get_wams_results(config, domain, lpm, trf, tef, trl, tel): #tolerance, sigma
         entropy[j] = ams[j].entropy
 
     # Recognition
-    response_size = 0
+    response_size = np.zeros(n_mems, dtype=int)
 
     for features, label in zip(tef_rounded, tel):
-        correct = int(label/lpm)
+        correct = label #int(label/lpm)
 
         memories = []
+        weights = {}
         for k in ams:
             recognized, weight = ams[k].recognize(features)
 
             # For calculation of per memory precision and recall
-            if (k == correct) and recognized:
-                cms[k][TP] += 1
-            elif k == correct:
-                cms[k][FN] += 1
-            elif recognized:
-                cms[k][FP] += 1
-            else:
-                cms[k][TN] += 1
+            cms[k][TP] += (k == correct) and recognized
+            cms[k][FP] += (k != correct) and recognized
+            cms[k][TN] += not ((k == correct) or recognized)
+            cms[k][FN] += (k == correct) and not recognized
+            #if (k == correct) and recognized:
+            #    cms[k][TP] += 1
+            #elif k == correct:
+            #    cms[k][FN] += 1
+            #elif recognized:
+            #    cms[k][FP] += 1
+            #else:
+            #    cms[k][TN] += 1
 
             # For calculation of behaviours, including overall precision and recall.
             if recognized:
                 memories.append(k)
+                weights[k] = weight
+                response_size[correct] += 1
 
-        response_size += len(memories)
         if len(memories) == 0:
             # Register empty case
-            behaviour[constants.no_response_idx] += 1
+            behaviour[correct, constants.no_response_idx] += 1
         elif not (correct in memories):
-            behaviour[constants.no_correct_response_idx] += 1
+            behaviour[correct, constants.no_correct_response_idx] += 1
         else:
-            l = get_label(memories, entropy)
+            l = get_label(memories, weights, entropy)
             if l != correct:
-                behaviour[constants.no_correct_chosen_idx] += 1
+                behaviour[correct, constants.no_correct_chosen_idx] += 1
             else:
-                behaviour[constants.correct_response_idx] += 1
+                behaviour[correct, constants.correct_response_idx] += 1
+        #response_size += len(memories)
+        #if len(memories) == 0:
+            # Register empty case
+        #    behaviour[constants.no_response_idx] += 1
+        #elif not (correct in memories):
+        #    behaviour[constants.no_correct_response_idx] += 1
+        #else:
+        #    l = get_label(memories, weights, entropy)
+        #    if l != correct:
+        #        behaviour[constants.no_correct_chosen_idx] += 1
+        #    else:
+        #        behaviour[constants.correct_response_idx] += 1
 
-    behaviour[constants.mean_responses_idx] = response_size /float(len(tef_rounded))
-    all_responses = len(tef_rounded) - behaviour[constants.no_response_idx]
-    all_precision = (behaviour[constants.correct_response_idx])/float(all_responses)
-    all_recall = (behaviour[constants.correct_response_idx])/float(len(tef_rounded))
+    #behaviour[constants.mean_responses_idx] = response_size /float(len(tef_rounded))
+    #all_responses = len(tef_rounded) - behaviour[constants.no_response_idx]
+    #all_precision = (behaviour[constants.correct_response_idx])/float(all_responses)
+    #all_recall = (behaviour[constants.correct_response_idx])/float(len(tef_rounded))
 
     print("Sanity check {} {}".format(constants.correct_response_idx, behaviour))
-    print("Sanity check {} {} {}".format(all_responses,all_precision,all_recall))
+    #print("Sanity check {} {} {}".format(all_responses,all_precision,all_recall))
 
-    behaviour[constants.precision_idx] = all_precision
-    behaviour[constants.recall_idx] = all_recall
+    #behaviour[constants.precision_idx] = all_precision
+    #behaviour[constants.recall_idx] = all_recall
 
-    precision_sum = 0.0 # defunct
-    recall_sum = 0.0 # defunct
+    precision_sum = 0.0
+    recall_sum = 0.0
     F1_sum = 0.0
     precisions = []
     recalls = []
@@ -219,11 +240,11 @@ def get_wams_results(config, domain, lpm, trf, tef, trl, tel): #tolerance, sigma
     outconfig = []
     print("Núm memoria, tolerancia, sigma, iota, kappa, tamaño memoria, F1, Precision, Recall, Entropía")
     for j in ams:
-        #tolerance = config[str(j)+"_tolerance"]
-        #sigma = 0.2 #config[str(j)+"_sigma"]
-        #iota = config[str(j)+"_iota"]
-        #kappa = config[str(j)+"_kappa"]
-        #msize = config[str(j)+"_memory_size"]
+        tolerance = config["tolerance"]
+        sigma = 0.1 #config[str(j)+"_sigma"]
+        iota = config["iota"]
+        kappa = config["kappa"]
+        msize = config["memory_size"]
 
         row = [tolerance, sigma, iota, kappa, msize, F1s[j], precisions[j], recalls[j], entropy[j]]
         print(",".join([str(j)]+[str(r) for r in row]))
@@ -247,6 +268,7 @@ def get_wams_results(config, domain, lpm, trf, tef, trl, tel): #tolerance, sigma
 
     print("Score {}".format(score))
     return (score, measures, entropy, behaviour)
+
 
 
 
@@ -275,8 +297,9 @@ def evaluate_memory_config(config: Configuration) -> float:  #(self, config: Con
     elif prefix == constants.full_prefix:
         suffix = constants.training_suffix
 
-    i = constants.training_stages - 1
+    #i = constants.training_stages - 1
     #for i in range(constants.training_stages):
+    i = random.randint(0, constants.training_stages - 1)
     gc.collect()
 
     training_features_filename = prefix + constants.features_name + suffix
@@ -308,13 +331,6 @@ def evaluate_memory_config(config: Configuration) -> float:  #(self, config: Con
     return score
 
 
-
-
-
-
-
-
-
 # Optimize tolerance, iota, kappa and memory size params
 def optimize():
     print("optimize")
@@ -339,7 +355,7 @@ def optimize():
     #"wallclock_limit": 7*86400, #863400 = 24hrs = 2 *  12 hrs = 12*60*60 secs
     #"n-workers":32,  # Use 32 workers
     "deterministic":"true", # hace que solo 1 semilla se pruebe en cada ejecucion de la funcion objetivo
-    "runcount-limit": 80, #Num evaluations
+    "runcount-limit": 200, #Num evaluations
     "n_trials":"1",  # Evaluated max 500 trials
     })
 

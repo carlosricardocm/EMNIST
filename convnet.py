@@ -29,6 +29,7 @@ import preprocess_emnist as pre
 
 import process_iam as iam
 import constants
+import cv2
 
 img_rows = 28
 img_columns = 28
@@ -106,23 +107,33 @@ def add_noise(data, experiment, occlusion = 0, bars_type = None):
     else:
         bars = {constants.EXP_9: VERTICAL_BARS,  constants.EXP_10: HORIZONTAL_BARS}
         return add_bars_occlusion(data, bars[experiment], bars_type)
+    
+def split(a, n):
+    k, m = divmod(len(a), n)
+    return (a[i*k+min(i, m):(i+1)*k+min(i+1, m)] for i in range(n))
 
-def get_data_iam(experiment, occlusion = None, bars_type = None, one_hot = False):
+#Learning stage starts in 0
+def get_data_iam(experiment, learning_stage, occlusion = None, bars_type = None, one_hot = False):
     
     # Load iam data, as part of TensorFlow.
     file_path = iam.preprocess_iam()
+  
     data = np.load(file_path, allow_pickle=True)
     
+    print(len(data['iam_filename']))
+    
+    data_stage = list(split(data['iam_filename'], constants.num_stages_learning)) 
+
     all_data = []
     #contador = 0
-    for line in data['iam_filename']:#['iamdataset']:
+    for line in data_stage[learning_stage]:#['iamdataset']:
         for image in line:
-              #if contador == 100:
+              #if contador == 10000:
               #    break
               all_data.append(image)
               #contador = contador+1
 
-    n_labels = constants.n_labels
+    #n_labels = constants.n_labels
     all_data = np.array(all_data)
   
 
@@ -143,7 +154,7 @@ def get_data(experiment, occlusion = None, bars_type = None, one_hot = False):
     
     # Load MNIST data, as part of TensorFlow.
     #(train_images, train_labels), (test_images, test_labels) = emnist.load_data(type='balanced')
-    #Change to load MNIST pre-processing database 
+    #Change to load MNIST preprocessed database 
     data = np.load(pre.preprocess_emnist())
     train_images = data['train_images']
     train_labels = data['train_labels']
@@ -403,75 +414,56 @@ def store_memories(labels, produced, features, directory, stage, msize):
     png.from_array(pixels, 'L;8').save(produced_filename)
 
 def obtain_features_iam(model_prefix, features_prefix, data_prefix,
-            training_percentage, am_filling_percentage, experiment,
+            experiment, learning_stage,
             occlusion = None, bars_type = None):
     """ Generate features for images.
     
     Uses the previously trained neural networks for generating the features corresponding
-    to the images. It may introduce occlusions.
-    """
+    to the iam chops. 
+    """  
+
+    data_iam = get_data_iam(experiment, learning_stage, occlusion, bars_type)
+
+    total = len(data_iam)
+    print("El total de datos para el learning stage ", learning_stage , " es: ", total)
+    
     stages = constants.training_stages
-
-    data = get_data_iam(experiment, occlusion, bars_type)
-
-    total = len(data)
-    print("El total es: ", total)
+    #We divide the data_set in
     step = int(total/constants.training_stages)
 
-    training_size = int(total*training_percentage)
-    filling_size = int(total*am_filling_percentage)
-    testing_size = total - training_size - filling_size
-
-    histories = []
     for n in range(stages):
-        i = int(n*step)
-        j = (i+training_size) % total
 
-        training_data = get_data_in_range(data, i, j)
-      
-        k = (j+filling_size) % total
-        filling_data = get_data_in_range(data, j, k)
-      
-        l = (k+testing_size) % total
-        testing_data = get_data_in_range(data, k, l)
-      
+        i = int(n*step)
+        j = (i + step - 1) 
+
         # Recreate the exact same model, including its weights and the optimizer
         model = tf.keras.models.load_model(constants.model_filename(model_prefix, n))
 
         # Drop the autoencoder and the last layers of the full connected neural network part.
         classifier = Model(model.input, model.output[0])
         classifier.compile(optimizer='adam', loss='categorical_crossentropy', metrics='accuracy')
-        #history = classifier.evaluate(testing_data, batch_size=batch_size, verbose=1, return_dict=True)
-        #print(history)
-        #histories.append(history)
+    
         model = Model(classifier.input, classifier.layers[-4].output)
         model.summary()
-
-        training_features = model.predict(training_data)
-        if len(filling_data) > 0:
-            filling_features = model.predict(filling_data)
-        else:
-            r, c = training_features.shape
-            filling_features = np.zeros((0, c))
-        testing_features = model.predict(testing_data)
+        
+        #if an error of Out Of Memory ocurrs we set the batch_size to 16 to avoid it.
+        #data_iam_features = model.predict(data_iam[i:j], batch_size=16)
+        data_iam_features = model.predict(data_iam[i:j])
+      
 
         dict = {
-            constants.training_suffix: (training_data, training_features ),
-            constants.filling_suffix : (filling_data, filling_features),
-            constants.testing_suffix : (testing_data, testing_features)
-            }
+                constants.iam_suffix: (data_iam, data_iam_features)
+               }
 
         for suffix in dict:
             data_fn = constants.data_filename(data_prefix+suffix, n)
             features_fn = constants.data_filename(features_prefix+suffix, n)
-            #labels_fn = constants.data_filename(labels_prefix+suffix, n)
-
+       
             d, f = dict[suffix]
             np.save(data_fn, d)
             np.save(features_fn, f)
-            #np.save(labels_fn, l)
-    
-    return histories
+            
+    return 
 
 
 def obtain_features(model_prefix, features_prefix, labels_prefix, data_prefix,
@@ -640,7 +632,9 @@ class ClassifierNeuralNetwork:
         decoded = get_decoder(input_cla)
 
         self.encoder = Model(inputs = input_enc, outputs = encoded)
+        #recreate classifier with the same optimizator 
         self.classifier = Model(inputs = input_cla, outputs = classified)
+        self.classifier.compile(optimizer='adam', loss='categorical_crossentropy', metrics='accuracy')
         self.decoder = Model(inputs= input_cla, outputs = decoded)
 
         # with open('todo.txt', 'w') as f:

@@ -6,12 +6,17 @@ import cv2
 import matplotlib.pyplot as plt
 from sklearn import linear_model
 from scipy import ndimage
+from PIL import Image
+
 
 import random
 import tensorflow as tf
 import math
 from extra_keras_datasets import emnist
-
+import png
+import datetime
+import preprocess_emnist as pre
+from datetime import datetime as dt
 
 
 import numpy as np
@@ -30,6 +35,10 @@ from associative import AssociativeMemory
 
 #For progress bar
 from tqdm import tqdm
+
+
+import sklearn
+
 
 
 (train_images, train_labels), (test_images, test_labels) = emnist.load_data(type='balanced')
@@ -89,6 +98,7 @@ notebook_name = 'preprocesamiento'
 destination_folder = os.path.join('databases', 'IAM', 'normalizada')
 iam_sources_path = os.path.join('databases', 'IAM')
 iam_filename = "iamdataset.npz"
+dest_folder_images = os.path.join('images','iam')
 
 test_img_page = os.path.join(iam_sources_path, 'formsA-D', 'a01-000x.png')
 test_img_line = os.path.join(iam_sources_path, 'lines', 'a02', 'a02-000','a02-000-00.png')
@@ -546,15 +556,29 @@ def image_resize(image, width = None, height = None, inter = cv2.INTER_AREA):
     return resized
 
 def chop(image, offset,plot=False):
+    #Convert image to integer values between 0 and 255
+    image = image.astype(np.uint8)
     dim = None
     (h, w) = image.shape[:2]
 
     images = []
     for i in range(0, w, offset):
-       if i+28 < w:        
-        chop = image[0:28,i:i+28].copy()
-        if plot:        
-            cv2.imshow('chop', chop) 
+       #while offset is lower than image width do:
+       if i+28 < w:
+        # slice image[initial_row:end_row , initial_columns:end_column]          
+        chop = np.array(image[0:28,i:i+16].copy())        
+        # The image is resized from 16x16 to 28X28 adding zeros to left and right size
+        # 0 zero padded to the top, 0 zero padded to the bottom, 6 zero padded to left, 6 zero padded to right
+        chop = np.pad(chop, ((0,0),(6,6)), 'constant') 
+
+        if plot:
+            dest_folder_images = os.path.join('images','iam')
+            img_name = os.path.join('chops' , dt.now().strftime("%Y%m%d-%H%M%S") + '.png' )
+            #im = Image.fromarray(chop)
+            #im.save(os.path.join(dest_folder_images, img_name))
+            #png.from_array(chop, 'L;8').save(os.path.join(dest_folder_images, img_name))         
+            #cv2.imshow('chop', chop) 
+
         images.append(chop)
 
     return images
@@ -596,9 +620,123 @@ def chop(image, offset,plot=False):
 #     #Aqui va la parte en donde se reconocerían las features de IAM DATASET 
 
 #     return "!"
+import collections
+def CountFrequency(arr):
+    return collections.Counter(arr)
 
+def count_frecuencies():
+    data = np.load(pre.preprocess_emnist())
+    train_images = data['train_images']
+    train_labels = data['train_labels']
+    test_images = data['test_images']
+    test_labels = data['test_labels']
+    
+    img = np.zeros((28,28))
+    lbl = 5
+    for i in range(20):
+        train_images = np.append(train_images, img.reshape((1,28,28)), axis=0)#np.vstack([train_images, img[None, :, :]])
+        train_labels = np.append(train_labels, i)
+
+    for i in range(46):
+        train_images = np.append(train_images, img.reshape((1,28,28)), axis=0 )#np.vstack([train_images, img[None, :, :]])
+        train_labels = np.append(train_labels, i)
+    
+    for i in range(30,46):
+        train_images = np.append(train_images, img.reshape((1,28,28)), axis=0 )#np.vstack([train_images, img[None, :, :]])
+        train_labels = np.append(train_labels, i)
+    
+    for i in range(1,10):
+        train_images = np.append(train_images, img.reshape((1,28,28)), axis=0)#np.vstack([train_images, img[None, :, :]])
+        train_labels = np.append(train_labels, i)
+
+    freq = CountFrequency(train_labels)
+    key = min(freq, key = lambda k: freq[k])
+    minimo = freq[key]
+
+    for (key, value) in freq.items():
+         print (key, " -> ", value)
+
+    train_images, train_labels = sklearn.utils.shuffle(train_images, train_labels)
+
+    new_labels = []
+    new_images = np.empty((0,28,28))
+    
+    cantidades = {}
+    for i in range(constants.n_labels):
+        cantidades.update({ i : 0 })
+
+    size = len(train_labels)
+    loop = tqdm(total = size, position=0, leave=False)
+    contador = 0
+
+    print("Ahora aqui es el nuevo")
+
+    for label, image in zip(train_labels, train_images):
+        
+        if cantidades[label] <= minimo:
+            #new_images = np.vstack([new_images, image[None, :, :]])
+            new_images = np.append(new_images, img.reshape((1,28,28)), axis=0)
+            new_labels = np.append(new_labels, label)
+            cantidades[label] += 1
+            
+        loop.set_description("Processing aumented EMNIST_dataset...".format(contador))
+        loop.update(1)
+        contador=contador+1
+    
+    loop.close()
+
+    freq = CountFrequency(new_labels)       
+    for (key, value) in freq.items():
+         print (key, " -> ", value)
+
+    #train_labels_extra = []
+    #train_images_extra = np.empty(shape=(0,28,28))
+    #train_images_extra = []
+    #for i in range(47):
+        #train_images_extra = np.vstack([train_images_extra, img[None, :, :]])
+        #train_images_extra.append( img)
+        #train_labels_extra = np.append(train_labels_extra, i)
+
+    #for i in range(10):
+        #train_images_extra = np.vstack([train_images_extra, img[None, :, :]])
+        #train_images_extra.append( img)
+        #train_labels_extra = np.append(train_labels_extra, i)
+
+    #print(train_labels_extra)
+    
+
+    #print("TAMAÑO TRAIN IMAGES NEW", len(train_images))
+    #print("TAMAÑO TRAIN LABELS NEW", len(train_labels))
+
+    # all_labels = np.concatenate((train_labels, test_labels), axis= 0)
+    # all_images = np.concatenate((train_images, test_images), axis= 0)
+
+    # freq = CountFrequency(all_labels)
+    # key = max(freq, key = lambda k: freq[k])
+    # maximo = freq[key]
+
+    # train_images_extra, train_labels_extra = sklearn.utils.shuffle(train_images_extra, train_labels_extra)
+    # print(train_images_extra)
+    # print(train_labels_extra)
+ 
+    # for label, image in zip (train_labels_extra, train_images_extra):
+    #     if( freq[label] < maximo + 1 ):
+    #         train_labels = np.append(train_labels, label)
+    #         train_images = np.vstack([train_images, image[None, :, :]])
+    #     key = max(freq, key = lambda k: freq[k])
+    #     maximo = freq[key]
+
+    # freq = CountFrequency(all_labels)   
+    # # iterate dictionary named as freq to print
+    # # count of each element
+    # for (key, value) in freq.items():
+    #     print (key, " -> ", value)
+
+    print("termine de contar")
 
 def increase_data():
+
+    count_frecuencies()
 
     get_best_ams()
 
@@ -620,6 +758,8 @@ def get_best_ams():
         kappa = df.iloc[minValueIndex[0], 12]
         msize = df.iloc[minValueIndex[0], 13]
 
+        print("tolerance: ", tolerance, " sigma: ", sigma, " iota: " , iota, " kappa: ", kappa, " msize: ", msize )
+
         prefix = constants.partial_prefix
         if prefix == constants.partial_prefix:
             suffix = constants.filling_suffix
@@ -627,91 +767,124 @@ def get_best_ams():
             suffix = constants.training_suffix
 
         #Aqui va un for sobre de todas las memorias y sus modelos
-        fold = 0
-        training_features_filename = prefix + constants.features_name + suffix
-        training_features_filename = constants.data_filename(training_features_filename, fold)
-        training_labels_filename = prefix + constants.labels_name + suffix
-        training_labels_filename = constants.data_filename(training_labels_filename, fold)
+        stages = constants.training_stages
 
-        training_iam_features = os.path.join('runs', 'features-iam-training-000.npy') 
+        labels_recognized = []
+        images_recognized = []        
+
+        for n in range(stages):
+            training_features_filename = prefix + constants.features_name + 's' + suffix
+            training_features_filename = constants.data_filename(training_features_filename, n)
+            training_labels_filename = prefix + constants.labels_name + suffix
+            training_labels_filename = constants.data_filename(training_labels_filename, n)
+
+            iamfeature_filename = constants.features_name + constants.iam_suffix
+            iamfeature_filename = constants.data_filename(iamfeature_filename, n)
+            #es = os.path.join('runs', 'features-iam-training-000.npy') 
         
-        trf = np.load(training_features_filename)
-        trl = np.load(training_labels_filename)
+            trf = np.load(training_features_filename)
+            trl = np.load(training_labels_filename)
 
-        triam = np.load(training_iam_features)
+            triam = np.load(iamfeature_filename)
 
-        min_value = trf.min()
-        max_value = trf.max()
+            min_value = trf.min()
+            max_value = trf.max()
 
-        min_value_iam = triam.min()
-        max_value_iam = triam.max()
+            min_value_iam = triam.min()
+            max_value_iam = triam.max()
 
-        nmems = constants.n_labels
-        domain = constants.domain
+            nmems = constants.n_labels
+            domain = constants.domain
 
-        ams = dict.fromkeys(range(nmems))
-        entropy = np.zeros((nmems, ), dtype=np.float64)
-        max_msize = 0 # para normalizacion
+            ams = dict.fromkeys(range(nmems))
+            entropy = np.zeros((nmems, ), dtype=np.float64)
+            max_msize = 0 # para normalizacion
 
-        for j in ams:
-            if msize > max_msize:
-                max_msize = msize
-            ams[j] = AssociativeMemory(domain, msize, tolerance, sigma, iota, kappa)
+            for j in ams:
+                if msize > max_msize:
+                    max_msize = msize
+                ams[j] = AssociativeMemory(domain, msize, tolerance, sigma, iota, kappa)
         
-        trf_rounded = np.round((trf-min_value) * (max_msize - 1) / (max_value-min_value)).astype(np.int16)
-        triam_rounded = np.round((triam-min_value_iam) * (max_msize - 1) / (max_value_iam-min_value_iam)).astype(np.int16)
+            trf_rounded = np.round((trf-min_value) * (max_msize - 1) / (max_value-min_value)).astype(np.int16)
+            triam_rounded = np.round((triam-min_value_iam) * (max_msize - 1) / (max_value_iam-min_value_iam)).astype(np.int16)
 
+            # Registration
+            for features, label in zip(trf_rounded, trl):
+                i = int(label)
+                ams[i].register(features)
 
-        # Registration
-        for features, label in zip(trf_rounded, trl):
-            i = int(label)
-            ams[i].register(features)
+            # Calculate entropies
+            for j in ams:
+                entropy[j] = ams[j].entropy
 
-        # Calculate entropies
-        for j in ams:
-            entropy[j] = ams[j].entropy
-
-        # Recognition
-        response_size = 0
+            # Recognition
+            response_size = 0
         
-        results = []
+            results = []
 
-        #Create Classifier from Neural Network for the comparation with ams results
-        snnet = convnet.ClassifierNeuralNetwork(constants.model_name, fold)
+            #Create Classifier from Neural Network for the comparation with ams results
+            snnet = convnet.ClassifierNeuralNetwork(constants.model_name, n)
 
-        for feature in triam_rounded:            
-            memories = []
-            weights = {}
-            for k in ams:
-                recognized, weight = ams[k].recognize(feature)
-                if recognized:
-                    memories.append(k)
-                    weights[k] = weight
-            #None IAM feature was recognized
-            if len(memories) == 0:
-                print("None Memory recognized the feature")
-                #results.append([None,snnet.classifier.predict(feature), feature])
-                #lsnnet = snnet.classifier.predict(feature)
-                #results.append([lwam,lsnnet], feature)                
-            else:
-                lwam = get_label(memories,weights,entropy) 
-                f = tf.constant([features])
+            #Create folder for each stage
+            os.makedirs(constants.dir_folder_learned_images_prefix+str(n), exist_ok=True)
+                            
 
-                
-                               
-                labels = snnet.classifier.predict(f)
-                lsnnet = np.argmax(labels, axis=1)
-                #results.append([lwam,lsnnet[0]], feature)
-                if(lwam == lsnnet):
-                    f = tf.constant([features])
-                    img_decodificada = snnet.decoder.predict(f)
-                    cv2.imshow('img decodificada', img_decodificada)
-                    print("hasta aca")
+            for feature_net, feature in zip(triam,triam_rounded):            
+                memories = []
+                weights = {}
+                for k in ams:
+                    recognized, weight = ams[k].recognize(feature)
+                    if recognized:
+                        memories.append(k)
+                        weights[k] = weight
+                #At least one memory recognize the feature
+                if len(memories) != 0:
+                    lwam = get_label(memories,weights,entropy) 
+                    f = tf.constant([feature_net])                
+                    labels = snnet.classifier.predict(f)
+                    lsnnet = np.argmax(labels, axis=1)
+                     #if decoder and memories say it's the same label
+                    if(lwam == lsnnet):                    
+                        img_produced = snnet.decoder.predict(f)
+                        img_produced = img_produced[0]                        
+                        pixels = img_produced.reshape(28,28) * 255
+                        #Save label and image recognized
+                        labels_recognized.append(lwam)
+                        images_recognized.append(pixels)                        
+                        #Save image recognized to disk
+                        pixels = pixels.round().astype(np.uint8)                        
+                        img_name = os.path.join(constants.dir_folder_learned_images_prefix + str(n), dt.now().strftime("%Y%m%d-%H%M%S") + '-' + str(lwam) + '.png' )                        
+                        png.from_array(pixels, 'L;8').save(img_name)                  
 
-                
-    
+        #aqui va el proceso de aumentar el corpus
+            
   
     return None
+
+
+
+def increaseEMNIST(images_recognized, labels_recognized ):
+    data = np.load(pre.preprocess_emnist())
+    train_images = data['train_images']
+    train_labels = data['train_labels']
+    test_images = data['test_images']
+    test_labels = data['test_labels']
+
+    all_data = np.concatenate((train_images, test_images), axis=0)
+    all_labels = np.concatenate((train_labels, test_labels), axis= 0)
+
+    all_data = np.concatenate((all_data, images_recognized), axis=0)
+    all_labels = np.concatenate((all_labels, labels_recognized), axis= 0)
+
+    
+
+    path_file = pre.path_file
+    file_processed = pre.file_processed
+
+    np.savez(os.path.join(path_file,file_processed) , train_images=train_images, train_labels=train_labels, test_images=test_images, test_labels=test_labels )
+
+    return None
+
 
 def get_label(memories, weights = None, entropies = None):
     if len(memories) == 1:
@@ -776,7 +949,7 @@ def proccess_line(pd_line, pd_words, iam_sources_path, destination_folder):
 
         img = np.float32(line_img_no_slant)
         img_rescaled = image_resize(img, height=28) 
-        images = chop(img_rescaled, offset=7)
+        images = chop(img_rescaled, offset=4)
 
         return images
 

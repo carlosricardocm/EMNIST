@@ -1391,17 +1391,20 @@ def main(action, occlusion = None, bar_type= None, tolerance = 0):
     elif (action == constants.GET_FEATURES_IAM):
         # Generates features for the memories using the previously generated
         # neural networks.
-        training_percentage = constants.nn_training_percent #0.57
-        am_filling_percentage = constants.am_filling_percent #0.33
+        #training_percentage = constants.nn_training_percent #0.57
+        #am_filling_percentage = constants.am_filling_percent #0.33
         model_prefix = constants.model_name # 'model' generated when trainning
-        features_prefix = 'features-iam'        
-        data_prefix = constants.data_name + 'iam' # 'data'
+        #Here I can modify the prefix to add the stage
+        features_prefix = constants.features_name #features       
+        data_prefix = constants.data_name  # 'data'
         action = constants.GET_FEATURES # 0
+        #learning stage starting in 0
+        learning_stage = 0
 
-        history = convnet.obtain_features_iam(model_prefix, features_prefix, data_prefix,
-                training_percentage, am_filling_percentage, action)
+        convnet.obtain_features_iam(model_prefix, features_prefix, data_prefix,
+                action, learning_stage)
      
-        save_history(history, features_prefix)
+        #save_history(history, features_prefix)
     elif action == constants.CHARACTERIZE:
         # Generates graphs of mean and standard distributions of feature values,
         # per digit class.

@@ -164,7 +164,7 @@ experiment_suffix = ['', '', '', '', '',
 #    else:
 #        return features_prefix + experiment_suffix[i] \
 #            + occlusion_suffix(occlusion) + bars_type_suffix(bars_type)
-features_name = "features" #  features_prefix + experiment_suffix[i]  + occlusion_suffix(occlusion) + bars_type_suffix(bars_type)
+features_name = "feature" #  features_prefix + experiment_suffix[i]  + occlusion_suffix(occlusion) + bars_type_suffix(bars_type)
 
 memories_prefix = 'memories'
 
@@ -186,12 +186,16 @@ training_suffix = '-training'
 filling_suffix = '-filling'
 testing_suffix = '-testing'
 memory_suffix = '-memories'
+learning_suffix = '-learning'
+iam_suffix = '-iam'
 
 # Model suffixes.
 classifier_suffix = '-classifier'
 decoder_suffix = '-autoencoder'
 
+
 training_stages = 10
+num_stages_learning = 5
 
 am_testing_percent = (100 / training_stages) / 100
 nn_training_percent = 0.57  # 0.10 + 0.57 = 0.67
@@ -220,6 +224,8 @@ n_measures = 4
 response_size_idx = 6
 
 mem_conf_prefix = 'mem_conftrix'
+
+dir_folder_learned_images_prefix = 'runs/images/fold-'
 
 def memory_conftrix_filename(fill, fold):
     prefix = mem_conf_prefix + '-fll_' + str(fill).zfill(3)
