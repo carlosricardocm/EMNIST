@@ -38,7 +38,7 @@ from tqdm import tqdm
 
 
 import sklearn
-
+from sklearn.model_selection import train_test_split
 
 
 (train_images, train_labels), (test_images, test_labels) = emnist.load_data(type='balanced')
@@ -47,51 +47,8 @@ import sklearn
 
 iam_sources_path = os.path.join('databases', 'IAM')
 
-# Read lines annotations
-array_lines=[]
-n=0
-with open(os.path.join(iam_sources_path, 'ascii','lines.txt'), 'r') as f:
-    array_words = []
-    for line in f:
-        if line[0] !='#':
-            lp = line.strip().split(' ')
-            n+=1
-            array_lines.append((lp[0], lp[1], int(lp[2]), int(lp[3]), int(lp[4]), int(lp[5]), int(lp[6]), int(lp[7]), ' '.join(lp[8:])))
-
-pd_lines = pd.DataFrame(array_lines, columns=['id_line','segmentation_result','graylevel_binarize', ' num_components',
-                                              'x','y','w','h','word'])
-
-pd_lines['id_page'] = pd_lines['id_line'].map(lambda x: '-'.join(x.split('-')[:2]))
-pd_lines['id_writter'] = pd_lines['id_page'].map(lambda x: x.split('-')[0])
 #pd_lines['partition'] = pd_lines['id_page'].apply(lambda x: partition_dict.get(x, 'trn'))
 
-# Read word annotations
-array_words=[]
-n=0
-with open(os.path.join(iam_sources_path, 'ascii','words.txt'), 'r') as f:
-    array_words = []
-    for line in f:
-        if line[0] !='#':
-            lp = line.strip().split(' ')
-            n+=1
-            array_words.append((lp[0], lp[1], int(lp[2]), int(lp[3]), int(lp[4]), int(lp[5]), int(lp[6]), lp[7], ' '.join(lp[8:])))
-
-pd_words = pd.DataFrame(
-    array_words,
-    columns=[
-        'id_word','segmentation_result','graylevel_binarize',
-        'x','y','w','h','grammar_tag','word'
-    ]
-)
-
-pd_words['line'] = pd_words.id_word.apply(lambda x: '-'.join(x.split('-')[:-1]))
-pd_words['page'] = pd_words.line.apply(lambda x: '-'.join(x.split('-')[:-1]))
-
-# marca de las palablas a seleccionar
-pd_words['selected'] = False
-pd_words.loc[(pd_words.segmentation_result == 'ok') & (pd_words.word != "#") & (pd_words.x > 0), 'selected'] = True
-
-lines_selected = set(pd_words[pd_words.selected].line.values)
 
 notebook_name = 'preprocesamiento'
 
@@ -659,7 +616,8 @@ def count_frecuencies():
     train_images, train_labels = sklearn.utils.shuffle(train_images, train_labels)
 
     new_labels = []
-    new_images = np.empty((0,28,28))
+    new_images = []
+    
     
     cantidades = {}
     for i in range(constants.n_labels):
@@ -675,7 +633,8 @@ def count_frecuencies():
         
         if cantidades[label] <= minimo:
             #new_images = np.vstack([new_images, image[None, :, :]])
-            new_images = np.append(new_images, img.reshape((1,28,28)), axis=0)
+            #new_images = np.append(new_images, image)
+            new_images.append([image])
             new_labels = np.append(new_labels, label)
             cantidades[label] += 1
             
@@ -684,6 +643,8 @@ def count_frecuencies():
         contador=contador+1
     
     loop.close()
+
+    new_images = new_images.reshape(( len(new_images), 28, 28 ))
 
     freq = CountFrequency(new_labels)       
     for (key, value) in freq.items():
@@ -736,17 +697,15 @@ def count_frecuencies():
 
 def increase_data():
 
-    count_frecuencies()
+    #count_frecuencies()
 
-    get_best_ams()
-
-
+    increase()
 
     return 'features'
 
 
 
-def get_best_ams():
+def increase():
        
     if os.path.isfile(smac.statsfilename):
         df = pd.read_csv(smac.statsfilename, encoding='utf-8')
@@ -817,11 +776,7 @@ def get_best_ams():
             for j in ams:
                 entropy[j] = ams[j].entropy
 
-            # Recognition
-            response_size = 0
-        
-            results = []
-
+           
             #Create Classifier from Neural Network for the comparation with ams results
             snnet = convnet.ClassifierNeuralNetwork(constants.model_name, n)
 
@@ -852,12 +807,12 @@ def get_best_ams():
                         labels_recognized.append(lwam)
                         images_recognized.append(pixels)                        
                         #Save image recognized to disk
-                        pixels = pixels.round().astype(np.uint8)                        
-                        img_name = os.path.join(constants.dir_folder_learned_images_prefix + str(n), dt.now().strftime("%Y%m%d-%H%M%S") + '-' + str(lwam) + '.png' )                        
-                        png.from_array(pixels, 'L;8').save(img_name)                  
+                        #pixels = pixels.round().astype(np.uint8)                        
+                        #img_name = os.path.join(constants.dir_folder_learned_images_prefix + str(n), dt.now().strftime("%Y%m%d-%H%M%S") + '-' + str(lwam) + '.png' )                        
+                        #png.from_array(pixels, 'L;8').save(img_name)                  
 
         #aqui va el proceso de aumentar el corpus
-            
+        increaseEMNIST(images_recognized, labels_recognized )   
   
     return None
 
@@ -876,7 +831,39 @@ def increaseEMNIST(images_recognized, labels_recognized ):
     all_data = np.concatenate((all_data, images_recognized), axis=0)
     all_labels = np.concatenate((all_labels, labels_recognized), axis= 0)
 
-    
+    freq = CountFrequency(all_labels)
+    key = min(freq, key = lambda k: freq[k])
+    minimo = freq[key]
+
+    all_data, all_labels = sklearn.utils.shuffle(all_data, all_labels)
+
+    new_labels = []
+    new_images = []
+
+    cantidades = {}
+    for i in range(constants.n_labels):
+        cantidades.update({ i : 0 })    
+
+    size = len(all_labels)
+    loop = tqdm(total = size, position=0, leave=False)
+    contador = 0
+
+    for label, image in zip(all_labels, all_data):        
+        if cantidades[label] <= minimo:           
+            new_images.append([image])
+            new_labels = np.append(new_labels, int(label))
+            cantidades[label] += 1            
+        loop.set_description("Processing aumented EMNIST_dataset...".format(contador))
+        loop.update(1)
+        contador=contador+1
+    loop.close()
+
+    freq = CountFrequency(new_labels)       
+    for (key, value) in freq.items():
+         print (key, " -> ", value)
+
+    train_images , test_images = train_test_split(new_images, test_size=0.14)
+    train_labels, test_labels = train_test_split(new_labels, test_size=0.14)
 
     path_file = pre.path_file
     file_processed = pre.file_processed
@@ -954,6 +941,51 @@ def proccess_line(pd_line, pd_words, iam_sources_path, destination_folder):
         return images
 
 def preprocess_iam():
+
+    # Read lines annotations
+    array_lines=[]
+    n=0
+    with open(os.path.join(iam_sources_path, 'ascii','lines.txt'), 'r') as f:
+        array_words = []
+        for line in f:
+            if line[0] !='#':
+                lp = line.strip().split(' ')
+                n+=1
+                array_lines.append((lp[0], lp[1], int(lp[2]), int(lp[3]), int(lp[4]), int(lp[5]), int(lp[6]), int(lp[7]), ' '.join(lp[8:])))
+
+    pd_lines = pd.DataFrame(array_lines, columns=['id_line','segmentation_result','graylevel_binarize', ' num_components',
+                                              'x','y','w','h','word'])
+
+    pd_lines['id_page'] = pd_lines['id_line'].map(lambda x: '-'.join(x.split('-')[:2]))
+    pd_lines['id_writter'] = pd_lines['id_page'].map(lambda x: x.split('-')[0])
+
+    # Read word annotations
+    array_words=[]
+    n=0
+    with open(os.path.join(iam_sources_path, 'ascii','words.txt'), 'r') as f:
+        array_words = []
+        for line in f:
+            if line[0] !='#':
+                lp = line.strip().split(' ')
+                n+=1
+                array_words.append((lp[0], lp[1], int(lp[2]), int(lp[3]), int(lp[4]), int(lp[5]), int(lp[6]), lp[7], ' '.join(lp[8:])))
+
+    pd_words = pd.DataFrame(
+        array_words,
+        columns=[
+        'id_word','segmentation_result','graylevel_binarize',
+        'x','y','w','h','grammar_tag','word'
+        ]
+    )
+
+    pd_words['line'] = pd_words.id_word.apply(lambda x: '-'.join(x.split('-')[:-1]))
+    pd_words['page'] = pd_words.line.apply(lambda x: '-'.join(x.split('-')[:-1]))
+
+    # marca de las palablas a seleccionar
+    pd_words['selected'] = False
+    pd_words.loc[(pd_words.segmentation_result == 'ok') & (pd_words.word != "#") & (pd_words.x > 0), 'selected'] = True
+
+    lines_selected = set(pd_words[pd_words.selected].line.values)
 
      #If destination folder does not exist, we created it.
     if not(os.path.exists(destination_folder)):

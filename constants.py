@@ -29,6 +29,7 @@ memories_path = 'memories'
 full_prefix = ''
 partial_prefix = ''
 learn_params_prefix ='learn_params'
+training_stage_suffix = '-training-stage'
 
 def occlusion_suffix(occlusion):
     return '' if occlusion is None else '-occ_' + str(int(round(occlusion*100))).zfill(3)
@@ -45,7 +46,7 @@ def tolerance_suffix(tolerance):
 def learn_params_name():
     return learn_params_prefix
 
-def filename(s, idx = None, occlusion = None, bars_type = None, tolerance = 0, extension = ''):
+def filename(s, training_stage, idx = None, occlusion = None, bars_type = None, tolerance = 0, extension = ''):
     """ Returns a file name in run_path directory with a given extension and an index
     """
     # Create target directory & all intermediate directories if don't exists
@@ -56,40 +57,40 @@ def filename(s, idx = None, occlusion = None, bars_type = None, tolerance = 0, e
         pass
 
     if idx is None:
-        return run_path + '/' + s + extension
+        return run_path + '/' + s + training_stage_suffix + '-' + training_stage + extension
     else:
-        return run_path + '/' + s + '-' + str(idx).zfill(3) \
+        return run_path + '/' + s + training_stage_suffix + '-' + training_stage + '-' + str(idx).zfill(3) \
             + occlusion_suffix(occlusion) \
             + bars_type_suffix(bars_type) + tolerance_suffix(tolerance) + extension
 
 
 
-def json_filename(s):
+def json_filename(s, training_stage):
     """ Returns a file name for a JSON file in run_path directory
     """
-    return filename(s,  extension = '.json')
+    return filename(s, training_stage,  extension = '.json')
 
 
-def csv_filename(s, idx = None, occlusion = None, bars_type = None, tolerance = 0):
+def csv_filename(s, training_stage, idx = None, occlusion = None, bars_type = None, tolerance = 0):
     """ Returns a file name for csv(i) in run_path directory
     """
-    return filename(s, idx, occlusion, bars_type, tolerance, '.csv')
+    return filename(s, training_stage, idx, occlusion, bars_type, tolerance, '.csv')
 
 
-def data_filename(s, idx = None):
+def data_filename(s, training_stage, idx = None):
     """ Returns a file name for csv(i) in run_path directory
     """
-    return filename(s, idx, extension='.npy')
+    return filename(s, training_stage, idx, extension='.npy')
 
 
-def picture_filename(s, idx = None, occlusion = None, bars_type = None, tolerance = 0):
+def picture_filename(s, training_stage, idx = None, occlusion = None, bars_type = None, tolerance = 0):
     """ Returns a file name for a graph.
     """
-    return filename(s, idx, occlusion, bars_type, tolerance, '.svg')
+    return filename(s, training_stage, idx, occlusion, bars_type, tolerance, '.svg')
 
 
-def model_filename(s, idx = None):
-    return filename(s, idx)
+def model_filename(s, training_stage, idx = None):
+    return filename(s, training_stage, idx)
 
 
 def image_filename(dir, stage, idx, label, suffix = ''):
@@ -227,9 +228,9 @@ mem_conf_prefix = 'mem_conftrix'
 
 dir_folder_learned_images_prefix = 'runs/images/fold-'
 
-def memory_conftrix_filename(fill, fold):
+def memory_conftrix_filename(fill, training_stage, fold):
     prefix = mem_conf_prefix + '-fll_' + str(fill).zfill(3)
-    return data_filename(prefix, fold)
+    return data_filename(prefix, training_stage, fold)
 
 def mean_idx(m):
     return m

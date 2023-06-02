@@ -31,6 +31,10 @@ import process_iam as iam
 import constants
 import cv2
 
+tf.random.set_seed(
+    1
+)
+
 img_rows = 28
 img_columns = 28
 
@@ -328,7 +332,7 @@ class EarlyStoppingAtLossCrossing(Callback):
 
 
 
-def train_networks(training_percentage, filename, experiment):
+def train_networks(training_stage, training_percentage, filename, experiment):
 
     stages = constants.training_stages
 
@@ -385,7 +389,7 @@ def train_networks(training_percentage, filename, experiment):
             (testing_labels, testing_data),return_dict=True)
         histories.append(history)
 
-        model.save(constants.model_filename(filename, n))
+        model.save(constants.model_filename(filename, training_stage, n))
 
     return histories
 
@@ -467,7 +471,7 @@ def obtain_features_iam(model_prefix, features_prefix, data_prefix,
 
 
 def obtain_features(model_prefix, features_prefix, labels_prefix, data_prefix,
-            training_percentage, am_filling_percentage, experiment,
+            training_percentage, am_filling_percentage, experiment, training_stage,
             occlusion = None, bars_type = None):
     """ Generate features for images.
     
@@ -502,7 +506,7 @@ def obtain_features(model_prefix, features_prefix, labels_prefix, data_prefix,
         testing_labels = get_data_in_range(labels, k, l)
 
         # Recreate the exact same model, including its weights and the optimizer
-        model = tf.keras.models.load_model(constants.model_filename(model_prefix, n))
+        model = tf.keras.models.load_model(constants.model_filename(model_prefix, training_stage, n))
 
         # Drop the autoencoder and the last layers of the full connected neural network part.
         classifier = Model(model.input, model.output[0])
@@ -529,9 +533,9 @@ def obtain_features(model_prefix, features_prefix, labels_prefix, data_prefix,
             }
 
         for suffix in dict:
-            data_fn = constants.data_filename(data_prefix+suffix, n)
-            features_fn = constants.data_filename(features_prefix+suffix, n)
-            labels_fn = constants.data_filename(labels_prefix+suffix, n)
+            data_fn = constants.data_filename(data_prefix+suffix, training_stage, n)
+            features_fn = constants.data_filename(features_prefix+suffix, training_stage, n)
+            labels_fn = constants.data_filename(labels_prefix+suffix, training_stage, n)
 
             d, f, l = dict[suffix]
             np.save(data_fn, d)

@@ -15,6 +15,7 @@ from extra_keras_datasets import emnist
 import numpy as np
 import pandas as pd
 import itertools
+from tqdm import tqdm
 
 
 #logging
@@ -479,9 +480,9 @@ def normalize_shape(img_list, x_size=192, y_size=48, plot=False):
         
     return img_normalized_list
 
-def check_for_dir(path):
-    if not os.path.exists(path):
-        os.makedirs(path)
+#def check_for_dir(path):
+#    if not os.path.exists(path):
+#        os.makedirs(path)
 
 def preprocess_emnist():
     file_exists = exists(os.path.join(path_file,file_processed))
@@ -491,26 +492,37 @@ def preprocess_emnist():
         print("Pre-Processing EMNIST images...")
         
         train_images_preprocesadas = np.zeros(np.shape(train_images))
-        for i, img in enumerate(train_images):        
-            cv2.imshow('original image', img)
-            image_contrast = enhance_contrast_otsu(img)
-            cv2.imshow('contrast image', image_contrast)
-            image_slope = slope_correction(image_contrast)
-            cv2.imshow('slope image', image_slope)                
-            train_images[i] = image_slope
 
-        
-        test_images_preprocesadas = np.zeros(np.shape(test_images))
-        for i, img in enumerate(test_images):        
+        size = len(train_images) + len(test_images)
+        loop = tqdm(total = size, position=0, leave=False)
+        contador = 0
+        for i, (img_train, img_test) in enumerate(zip( train_images, test_images)):        
             #cv2.imshow('original image', img)
-            image_contrast = enhance_contrast_otsu(img)
+            img_contrast_train = enhance_contrast_otsu(img_train)
+            img_contrast_test = enhance_contrast_otsu(img_test)
             #cv2.imshow('contrast image', image_contrast)
-            image_slope = slope_correction(image_contrast)
-            #cv2.imshow('slope image', image_slope)
-            test_images[i] = image_slope
-        print("End Pre-Processing EMNIST images...")    
+            img_slope_train = slope_correction(img_contrast_train)
+            img_slope_test = slope_correction(img_contrast_test)
+
+            #cv2.imshow('slope image', image_slope)                
+            train_images[i] = img_slope_train
+            test_images[i] = img_slope_test
+            loop.set_description("Processing EMNIST images...".format(contador))
+            loop.update(1)
+            contador += 1
         
-        check_for_dir(path_file)
+        # test_images_preprocesadas = np.zeros(np.shape(test_images))
+        # for i, img in enumerate(test_images):        
+        #     #cv2.imshow('original image', img)
+        #     image_contrast = enhance_contrast_otsu(img)
+        #     #cv2.imshow('contrast image', image_contrast)
+        #     image_slope = slope_correction(image_contrast)
+        #     #cv2.imshow('slope image', image_slope)
+        #     test_images[i] = image_slope
+        # print("End Pre-Processing EMNIST images...")    
+            #Create folder for each stage
+        os.makedirs(path_file, exist_ok=True)
+        #check_for_dir(path_file)
         np.savez(os.path.join(path_file,file_processed) , train_images=train_images, train_labels=train_labels, test_images=test_images, test_labels=test_labels )
         
         print("Proccesed EMNIST Database saved in:")
