@@ -626,7 +626,7 @@ def increase_data():
     if os.path.isfile(smac.statsfilename):
         df = pd.read_csv(smac.statsfilename, encoding='utf-8')
         #Get row whit the min F1 value  
-        minValueIndex = int(df.astype(float).idxmin())
+        minValueIndex = df.idxmin()
         tolerance = df.iloc[minValueIndex[0], 9]
         sigma = df.iloc[minValueIndex[0], 10]
         iota = df.iloc[minValueIndex[0], 11]
