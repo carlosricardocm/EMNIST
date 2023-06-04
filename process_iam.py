@@ -626,14 +626,14 @@ def increase_data():
     if os.path.isfile(smac.statsfilename):
         df = pd.read_csv(smac.statsfilename, encoding='utf-8')
         #Get row whit the min F1 value  
-        minValueIndex = df.idxmin()
+        minValueIndex = int(df.astype(float).idxmin())
         tolerance = df.iloc[minValueIndex[0], 9]
         sigma = df.iloc[minValueIndex[0], 10]
         iota = df.iloc[minValueIndex[0], 11]
         kappa = df.iloc[minValueIndex[0], 12]
         msize = df.iloc[minValueIndex[0], 13]
 
-        print("tolerance: ", tolerance, " sigma: ", sigma, " iota: " , iota, " kappa: ", kappa, " msize: ", msize )
+        print("tolerance: ", str(tolerance), " sigma: ", str(sigma), " iota: " , str(iota), " kappa: ", str(kappa), " msize: ", str(msize) )
 
         # prefix = constants.partial_prefix
         # if prefix == constants.partial_prefix:
