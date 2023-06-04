@@ -7,6 +7,10 @@ import matplotlib.pyplot as plt
 from sklearn import linear_model
 from scipy import ndimage
 from PIL import Image
+from requests.auth import HTTPBasicAuth
+import requests
+import tarfile
+import collections
 
 
 import random
@@ -35,6 +39,8 @@ from associative import AssociativeMemory
 
 #For progress bar
 from tqdm import tqdm
+from clint.textui import progress
+
 
 
 import sklearn
@@ -540,44 +546,6 @@ def chop(image, offset,plot=False):
 
     return images
      
-
-# def get_wams_results(config, domain, lpm, trf, trl, tolerance, sigma, iota, kappa, msize):
-    
-#     # Round the values
-#     max_value = trf.max()
-#     min_value = trf.min()
-   
-#     n_labels = constants.n_labels
-#     nmems = int(n_labels/lpm)
-
-#     # Create the required associative memories.
-#     ams = dict.fromkeys(range(nmems))
-#     max_msize = 0 # para normalizacion
-    
-#     measures = np.zeros((constants.n_measures, nmems), dtype=np.float64)
-#     entropy = np.zeros((nmems, ), dtype=np.float64)
-#     behaviour = np.zeros((constants.n_behaviours, ))
-
-#     for j in ams:
-#         if msize > max_msize:
-#             max_msize = msize
-#         ams[j] = AssociativeMemory(domain, msize, tolerance, sigma, iota, kappa)
-
-#     trf_rounded = np.round((trf-min_value) * (max_msize - 1) / (max_value-min_value)).astype(np.int16)
-
-#     # Registration
-#     for features, label in zip(trf_rounded, trl):
-#         i = int(label/lpm)
-#         ams[i].register(features)
-
-#     # Calculate entropies
-#     for j in ams:
-#         entropy[j] = ams[j].entropy
-    
-#     #Aqui va la parte en donde se reconocerían las features de IAM DATASET 
-
-#     return "!"
-import collections
 def CountFrequency(arr):
     return collections.Counter(arr)
 
@@ -650,62 +618,10 @@ def count_frecuencies():
     for (key, value) in freq.items():
          print (key, " -> ", value)
 
-    #train_labels_extra = []
-    #train_images_extra = np.empty(shape=(0,28,28))
-    #train_images_extra = []
-    #for i in range(47):
-        #train_images_extra = np.vstack([train_images_extra, img[None, :, :]])
-        #train_images_extra.append( img)
-        #train_labels_extra = np.append(train_labels_extra, i)
+    return
 
-    #for i in range(10):
-        #train_images_extra = np.vstack([train_images_extra, img[None, :, :]])
-        #train_images_extra.append( img)
-        #train_labels_extra = np.append(train_labels_extra, i)
-
-    #print(train_labels_extra)
-    
-
-    #print("TAMAÑO TRAIN IMAGES NEW", len(train_images))
-    #print("TAMAÑO TRAIN LABELS NEW", len(train_labels))
-
-    # all_labels = np.concatenate((train_labels, test_labels), axis= 0)
-    # all_images = np.concatenate((train_images, test_images), axis= 0)
-
-    # freq = CountFrequency(all_labels)
-    # key = max(freq, key = lambda k: freq[k])
-    # maximo = freq[key]
-
-    # train_images_extra, train_labels_extra = sklearn.utils.shuffle(train_images_extra, train_labels_extra)
-    # print(train_images_extra)
-    # print(train_labels_extra)
- 
-    # for label, image in zip (train_labels_extra, train_images_extra):
-    #     if( freq[label] < maximo + 1 ):
-    #         train_labels = np.append(train_labels, label)
-    #         train_images = np.vstack([train_images, image[None, :, :]])
-    #     key = max(freq, key = lambda k: freq[k])
-    #     maximo = freq[key]
-
-    # freq = CountFrequency(all_labels)   
-    # # iterate dictionary named as freq to print
-    # # count of each element
-    # for (key, value) in freq.items():
-    #     print (key, " -> ", value)
-
-    print("termine de contar")
 
 def increase_data():
-
-    #count_frecuencies()
-
-    increase()
-
-    return 'features'
-
-
-
-def increase():
        
     if os.path.isfile(smac.statsfilename):
         df = pd.read_csv(smac.statsfilename, encoding='utf-8')
@@ -719,27 +635,28 @@ def increase():
 
         print("tolerance: ", tolerance, " sigma: ", sigma, " iota: " , iota, " kappa: ", kappa, " msize: ", msize )
 
-        prefix = constants.partial_prefix
-        if prefix == constants.partial_prefix:
-            suffix = constants.filling_suffix
-        elif prefix == constants.full_prefix:
-            suffix = constants.training_suffix
-
-        #Aqui va un for sobre de todas las memorias y sus modelos
+        # prefix = constants.partial_prefix
+        # if prefix == constants.partial_prefix:
+        #     suffix = constants.filling_suffix
+        # elif prefix == constants.full_prefix:
+        #     suffix = constants.training_suffix
+       
+        
         stages = constants.training_stages
+        training_stage = constants.training_stage
 
         labels_recognized = []
         images_recognized = []        
 
         for n in range(stages):
-            training_features_filename = prefix + constants.features_name + 's' + suffix
-            training_features_filename = constants.data_filename(training_features_filename, n)
-            training_labels_filename = prefix + constants.labels_name + suffix
-            training_labels_filename = constants.data_filename(training_labels_filename, n)
+            training_features_filename = constants.features_name + constants.training_suffix 
+            training_features_filename = constants.data_filename(training_features_filename, training_stage,  n)
+            training_labels_filename = constants.labels_name + constants.training_suffix
+            training_labels_filename = constants.data_filename(training_labels_filename, training_stage, n)
 
             iamfeature_filename = constants.features_name + constants.iam_suffix
-            iamfeature_filename = constants.data_filename(iamfeature_filename, n)
-            #es = os.path.join('runs', 'features-iam-training-000.npy') 
+            iamfeature_filename = constants.data_filename(iamfeature_filename, training_stage, n)
+           
         
             trf = np.load(training_features_filename)
             trl = np.load(training_labels_filename)
@@ -807,13 +724,15 @@ def increase():
                         labels_recognized.append(lwam)
                         images_recognized.append(pixels)                        
                         #Save image recognized to disk
-                        #pixels = pixels.round().astype(np.uint8)                        
-                        #img_name = os.path.join(constants.dir_folder_learned_images_prefix + str(n), dt.now().strftime("%Y%m%d-%H%M%S") + '-' + str(lwam) + '.png' )                        
-                        #png.from_array(pixels, 'L;8').save(img_name)                  
+                        pixels = pixels.round().astype(np.uint8)                        
+                        img_name = os.path.join(constants.dir_folder_learned_images_prefix + str(n), dt.now().strftime("%Y%m%d-%H%M%S") + '-' + str(lwam) + '.png' )                        
+                        png.from_array(pixels, 'L;8').save(img_name)                  
 
         #aqui va el proceso de aumentar el corpus
         increaseEMNIST(images_recognized, labels_recognized )   
-  
+    else:
+        print("Not optimize process exist run before that")
+
     return None
 
 
@@ -824,6 +743,14 @@ def increaseEMNIST(images_recognized, labels_recognized ):
     train_labels = data['train_labels']
     test_images = data['test_images']
     test_labels = data['test_labels']
+
+    #Save the recognized labels and images
+    images_recognized_filename = constants.learned_images_suffix 
+    images_recognized_filename = constants.data_filename(images_recognized_filename, constants.training_stage)
+    labels_recognized_filename = constants.learned_labels_suffix
+    labels_recognized_filename = constants.data_filename(labels_recognized_filename, constants.training_stage)    
+    np.save(images_recognized_filename, images_recognized)
+    np.save(labels_recognized_filename, labels_recognized)
 
     all_data = np.concatenate((train_images, test_images), axis=0)
     all_labels = np.concatenate((train_labels, test_labels), axis= 0)
@@ -942,67 +869,110 @@ def proccess_line(pd_line, pd_words, iam_sources_path, destination_folder):
 
 def preprocess_iam():
 
-    # Read lines annotations
-    array_lines=[]
-    n=0
-    with open(os.path.join(iam_sources_path, 'ascii','lines.txt'), 'r') as f:
-        array_words = []
-        for line in f:
-            if line[0] !='#':
-                lp = line.strip().split(' ')
-                n+=1
-                array_lines.append((lp[0], lp[1], int(lp[2]), int(lp[3]), int(lp[4]), int(lp[5]), int(lp[6]), int(lp[7]), ' '.join(lp[8:])))
+    #Check if processed iam dataset file exist 
+    if (not os.path.isfile(os.path.join(destination_folder, iam_filename))):
+    
+        #We check if we had previously created the preproceced IAM dataset file
+        if not(os.path.exists(os.path.join(destination_folder,iam_filename))): 
 
-    pd_lines = pd.DataFrame(array_lines, columns=['id_line','segmentation_result','graylevel_binarize', ' num_components',
-                                              'x','y','w','h','word'])
+            #We check if we already downloaded IAM dataset
+            if not(os.path.exists(os.path.join(iam_sources_path,"lines","r06"))): 
+            
+                dir_folder_ascii_iam = os.path.join(iam_sources_path, 'ascii' )
+                dir_folder_lines_iam = os.path.join(iam_sources_path, 'lines' )
+                os.makedirs(dir_folder_ascii_iam, exist_ok = True)
+                os.makedirs(dir_folder_lines_iam, exist_ok = True)
 
-    pd_lines['id_page'] = pd_lines['id_line'].map(lambda x: '-'.join(x.split('-')[:2]))
-    pd_lines['id_writter'] = pd_lines['id_page'].map(lambda x: x.split('-')[0])
+                print("Downloading IAM ASCII Dataset")
 
-    # Read word annotations
-    array_words=[]
-    n=0
-    with open(os.path.join(iam_sources_path, 'ascii','words.txt'), 'r') as f:
-        array_words = []
-        for line in f:
-            if line[0] !='#':
-                lp = line.strip().split(' ')
-                n+=1
-                array_words.append((lp[0], lp[1], int(lp[2]), int(lp[3]), int(lp[4]), int(lp[5]), int(lp[6]), lp[7], ' '.join(lp[8:])))
+                url='https://fki.tic.heia-fr.ch/DBs/iamDB/data/ascii.tgz'
+                res = requests.get(url, stream=True, cookies= {'session': 'eyJlbWFpbCI6InJpY2FyZG9fY21AaG90bWFpbC5jb20iLCJsYXN0cGFnZSI6Ii8iLCJsb2dnZWRpbiI6dHJ1ZSwidXNlcmlkIjo3ODU2M30.ZHptgA.c2ztOPsuuE0g45dzzUEjk3wF5P4'}) 
 
-    pd_words = pd.DataFrame(
-        array_words,
-        columns=[
-        'id_word','segmentation_result','graylevel_binarize',
-        'x','y','w','h','grammar_tag','word'
-        ]
-    )
+                with open(os.path.join(dir_folder_ascii_iam, 'ascii.tgz' ), 'wb') as f:
+                    total_length = int(res.headers.get('content-length'))
+                    for chunk in progress.bar(res.iter_content(chunk_size=1024), expected_size=(total_length/1024) + 1): 
+                        if chunk:
+                            f.write(chunk)
+                            f.flush()
 
-    pd_words['line'] = pd_words.id_word.apply(lambda x: '-'.join(x.split('-')[:-1]))
-    pd_words['page'] = pd_words.line.apply(lambda x: '-'.join(x.split('-')[:-1]))
+                print("Extracting IAM ASCII Dataset")
+                with tarfile.open(name=os.path.join(dir_folder_ascii_iam, 'ascii.tgz' )) as tar:
+                    # Go over each item
+                    for item in tqdm(iterable=tar.getmembers(), total=len(tar.getmembers())):
+                        tar.extract(member=item, path=dir_folder_ascii_iam)
 
-    # marca de las palablas a seleccionar
-    pd_words['selected'] = False
-    pd_words.loc[(pd_words.segmentation_result == 'ok') & (pd_words.word != "#") & (pd_words.x > 0), 'selected'] = True
+                print("Downloading IAM Lines Dataset")
+                url='https://fki.tic.heia-fr.ch/DBs/iamDB/data/lines.tgz'
+                res = requests.get(url, stream=True, cookies= {'session': 'eyJlbWFpbCI6InJpY2FyZG9fY21AaG90bWFpbC5jb20iLCJsYXN0cGFnZSI6Ii8iLCJsb2dnZWRpbiI6dHJ1ZSwidXNlcmlkIjo3ODU2M30.ZHptgA.c2ztOPsuuE0g45dzzUEjk3wF5P4'}) 
 
-    lines_selected = set(pd_words[pd_words.selected].line.values)
+                with open(os.path.join(dir_folder_lines_iam, 'lines.tgz' ), 'wb') as f:
+                    total_length = int(res.headers.get('content-length'))
+                    for chunk in progress.bar(res.iter_content(chunk_size=1024), expected_size=(total_length/1024) + 1): 
+                        if chunk:
+                            f.write(chunk)
+                            f.flush()
+                            
+                print("Extracting IAM Lines Dataset")
+                with tarfile.open(name=os.path.join(dir_folder_lines_iam, 'lines.tgz' )) as tar:
+                    # Go over each item
+                    for item in tqdm(iterable=tar.getmembers(), total=len(tar.getmembers())):
+                        tar.extract(member=item, path=dir_folder_lines_iam)
 
-     #If destination folder does not exist, we created it.
-    if not(os.path.exists(destination_folder)):
-        os.makedirs(destination_folder) 
+        #If destination folder does not exist, we created it.
+        if not(os.path.exists(destination_folder)):
+            os.makedirs(destination_folder) 
 
-    #We check if we had previously created the file
-    if not(os.path.exists(os.path.join(destination_folder,iam_filename))): 
+        # Read lines annotations
+        array_lines=[]
+        n=0
 
-        #Select the line to be process
-        #In pd_lines are the lines of iam dataset with the following format:
-        #columns=['id_line','segmentation_result','graylevel_binarize', 'num_components', 'x','y','w','h','word', 'id_writter', 'id_page']
-        #In pd_words are the words of iam dataset with the following formart:
-        #columns=['id_word','segmentation_result','graylevel_binarize','x','y','w','h','grammar_tag','word']
+        with open(os.path.join(iam_sources_path, 'ascii','lines.txt'), 'r') as f:
+            array_words = []
+            for line in f:
+                if line[0] !='#':
+                    lp = line.strip().split(' ')
+                    n+=1
+                    array_lines.append((lp[0], lp[1], int(lp[2]), int(lp[3]), int(lp[4]), int(lp[5]), int(lp[6]), int(lp[7]), ' '.join(lp[8:])))
+
+        pd_lines = pd.DataFrame(array_lines, columns=['id_line','segmentation_result','graylevel_binarize', ' num_components',
+                                                'x','y','w','h','word'])
+
+        pd_lines['id_page'] = pd_lines['id_line'].map(lambda x: '-'.join(x.split('-')[:2]))
+        pd_lines['id_writter'] = pd_lines['id_page'].map(lambda x: x.split('-')[0])
+
+        # Read word annotations
+        array_words=[]
+        n=0
+        with open(os.path.join(iam_sources_path, 'ascii','words.txt'), 'r') as f:
+            array_words = []
+            for line in f:
+                if line[0] !='#':
+                    lp = line.strip().split(' ')
+                    n+=1
+                    array_words.append((lp[0], lp[1], int(lp[2]), int(lp[3]), int(lp[4]), int(lp[5]), int(lp[6]), lp[7], ' '.join(lp[8:])))
+
+        pd_words = pd.DataFrame(
+            array_words,
+            columns=[
+            'id_word','segmentation_result','graylevel_binarize',
+            'x','y','w','h','grammar_tag','word'
+            ]
+        )
+
+        pd_words['line'] = pd_words.id_word.apply(lambda x: '-'.join(x.split('-')[:-1]))
+        pd_words['page'] = pd_words.line.apply(lambda x: '-'.join(x.split('-')[:-1]))
+
+        # marca de las palablas a seleccionar
+        pd_words['selected'] = False
+        pd_words.loc[(pd_words.segmentation_result == 'ok') & (pd_words.word != "#") & (pd_words.x > 0), 'selected'] = True
+
+        lines_selected = set(pd_words[pd_words.selected].line.values)
+
         images = []
         size = len(list(pd_lines[(pd_lines.id_line.isin(lines_selected))].itertuples()))
         loop = tqdm(total = size, position=0, leave=False)
         contador = 0
+        #NOTE: CHECK IF I CAN PARALLELIZE THIS CODE
         for line in pd_lines[(pd_lines.id_line.isin(lines_selected))].itertuples(): #& (pd_lines.partition == 'trn')].itertuples(): Esta parte se utilizaria si se divide en entrenamiento el dataset
             try:
                 imgs = proccess_line(line, pd_words, iam_sources_path, destination_folder)
@@ -1017,9 +987,11 @@ def preprocess_iam():
         
         np.savez(os.path.join(destination_folder,iam_filename), iam_filename=images)
         return os.path.join(destination_folder,iam_filename)
+    #If we had already the preproceced IAM file only return the file
     else:
         return os.path.join(destination_folder,iam_filename)
         
+       
                  
 def main():
 

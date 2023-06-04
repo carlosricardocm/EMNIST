@@ -117,7 +117,7 @@ def split(a, n):
     return (a[i*k+min(i, m):(i+1)*k+min(i+1, m)] for i in range(n))
 
 #Learning stage starts in 0
-def get_data_iam(experiment, learning_stage, occlusion = None, bars_type = None, one_hot = False):
+def get_data_iam(experiment,  occlusion = None, bars_type = None, one_hot = False):
     
     # Load iam data, as part of TensorFlow.
     file_path = iam.preprocess_iam()
@@ -126,26 +126,22 @@ def get_data_iam(experiment, learning_stage, occlusion = None, bars_type = None,
     
     print(len(data['iam_filename']))
     
+    #Divide the iam dataset into the number of learning stages
     data_stage = list(split(data['iam_filename'], constants.num_stages_learning)) 
+    training_stage = int(constants.training_stage)
 
     all_data = []
-    #contador = 0
-    for line in data_stage[learning_stage]:#['iamdataset']:
-        for image in line:
-              #if contador == 10000:
-              #    break
+    
+    #Select the elements for the actual training stage 
+    for line in data_stage[training_stage]:
+        for image in line:              
               all_data.append(image)
-              #contador = contador+1
-
-    #n_labels = constants.n_labels
+                  
     all_data = np.array(all_data)
   
-
     all_data = all_data.reshape((all_data.shape[0], img_columns, img_rows, 1))
     all_data = all_data.astype('float32') / 255
-
-  
-   
+ 
     if one_hot:
         # Changes labels to binary rows. Each label correspond to a column, and only
         # the column for the corresponding label is set to one.
@@ -418,21 +414,20 @@ def store_memories(labels, produced, features, directory, stage, msize):
     png.from_array(pixels, 'L;8').save(produced_filename)
 
 def obtain_features_iam(model_prefix, features_prefix, data_prefix,
-            experiment, learning_stage,
-            occlusion = None, bars_type = None):
+            experiment, occlusion = None, bars_type = None):
     """ Generate features for images.
     
     Uses the previously trained neural networks for generating the features corresponding
     to the iam chops. 
-    """  
+    """ 
+     
 
-    data_iam = get_data_iam(experiment, learning_stage, occlusion, bars_type)
+    data_iam = get_data_iam(experiment, occlusion, bars_type)
 
     total = len(data_iam)
-    print("El total de datos para el learning stage ", learning_stage , " es: ", total)
+    print("El total de datos para el learning stage ", constants.training_stage , " es: ", total)
     
-    stages = constants.training_stages
-    #We divide the data_set in
+    stages = constants.training_stages  
     step = int(total/constants.training_stages)
 
     for n in range(stages):
@@ -441,7 +436,7 @@ def obtain_features_iam(model_prefix, features_prefix, data_prefix,
         j = (i + step - 1) 
 
         # Recreate the exact same model, including its weights and the optimizer
-        model = tf.keras.models.load_model(constants.model_filename(model_prefix, n))
+        model = tf.keras.models.load_model(constants.model_filename(model_prefix, constants.training_stage, n))
 
         # Drop the autoencoder and the last layers of the full connected neural network part.
         classifier = Model(model.input, model.output[0])
@@ -460,8 +455,8 @@ def obtain_features_iam(model_prefix, features_prefix, data_prefix,
                }
 
         for suffix in dict:
-            data_fn = constants.data_filename(data_prefix+suffix, n)
-            features_fn = constants.data_filename(features_prefix+suffix, n)
+            data_fn = constants.data_filename(data_prefix+suffix, constants.training_stage, n)
+            features_fn = constants.data_filename(features_prefix+suffix, constants.training_stage, n)
        
             d, f = dict[suffix]
             np.save(data_fn, d)
@@ -626,7 +621,8 @@ def remember(experiment, occlusion = None, bars_type = None, tolerance = 0):
 
 class ClassifierNeuralNetwork:
     def __init__ (self, prefix, fold):
-        model_filename = constants.model_filename(prefix, fold)
+        training_stage = constants.training_stage
+        model_filename = constants.model_filename(prefix, training_stage, fold)
         model = tf.keras.models.load_model(model_filename )
 
         input_enc = Input(shape=(img_columns, img_rows, 1)) #image 28X28X1
@@ -642,7 +638,7 @@ class ClassifierNeuralNetwork:
         self.decoder = Model(inputs= input_cla, outputs = decoded)
 
         # with open('todo.txt', 'w') as f:
-        #     f.write(" \n AQUI EMPIEZA EL MODELO \n")
+        #     f.write(" \n MODEL SUMMARY \n")
         #     for id, layer in enumerate(model.layers):
         #         name = str(layer.name) 
         #         input = str(layer.input.shape)
@@ -650,7 +646,7 @@ class ClassifierNeuralNetwork:
                 
         #         f.write("ID: " + str(id) + " NAME: "+ name + " INPUT: " + input + "  OUTPUT: " + output + "\n" )
             
-        #     f.write(" \n AQUI EMPIEZA EL DECODIFICADOR \n")
+        #     f.write(" \n LAYER DECODER START \n")
 
         #     for id, layer in enumerate(self.decoder.layers):
         #         name = str(layer.name) 
@@ -659,7 +655,7 @@ class ClassifierNeuralNetwork:
                 
         #         f.write("ID: " + str(id) + " NAME: "+ name + " INPUT: " + input + "  OUTPUT: " + output + "\n")
 
-        #     f.write(" \n AQUI EMPIEZA EL CLASIFICADOR \n")
+        #     f.write(" \n LAYER CLASSIFIER  START\n")
 
         #     for id, layer in enumerate(self.classifier.layers):
         #         name = str(layer.name) 

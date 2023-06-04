@@ -662,12 +662,13 @@ def split_by_label(fl_pairs):
         label_dict[label].append(features)
     return label_dict.items()
 
-def run_optimization(domain, experiment):
+def run_optimization(domain, experiment, training_stage):
+    constants.training_stage = training_stage
     best_configuration = smac.optimize()
 
 def increase_data(domain,experiment):  
     iam.increase_data()
-    return "POR DEFINIR"
+    return 
 
 def test_memories(domain, experiment, training_stage):
 
@@ -1400,9 +1401,10 @@ def main(action, training_stage):#, occlusion = None, bar_type= None, tolerance 
         action = constants.GET_FEATURES # 0
         #learning stage starting in 0
         learning_stage = 0
+        constants.training_stage = training_stage
 
         convnet.obtain_features_iam(model_prefix, features_prefix, data_prefix,
-                action, learning_stage)
+                action)
      
         #save_history(history, features_prefix)
     elif action == constants.CHARACTERIZE:
@@ -1411,9 +1413,10 @@ def main(action, training_stage):#, occlusion = None, bar_type= None, tolerance 
         characterize_features(constants.domain, action)
     elif action == constants.OPTIMIZATION:
         # Optimization of iota, kappa, tolerance and size memory using the SMAC algorithm
-        run_optimization(constants.domain, action)
+        run_optimization(constants.domain, action, training_stage)
     elif action == constants.INCREASE:
         # Increase the data in emnist using the iam dataset
+        constants.training_stage = training_stage
         increase_data(constants.domain, action)
     elif (action == constants.EXP_1) or (action == constants.EXP_2):
         # The domain size, equal to the size of the output layer of the network.

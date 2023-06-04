@@ -34,7 +34,7 @@ prior_iota = 0.601543557593993
 
 # Directorio de salida
 smac_outdir = "SMAC_results"
-smac_filename = "EMNIST_HPOFacade_with_priors.csv"
+smac_filename = "EMNIST_HPOFacade_with_priors-training-stage-" + str(constants.training_stage) + ".csv"
 # Historico de configuraciones intentadas
 statsfilename = os.path.join(smac_outdir, smac_filename)
 headstr = "Score = (-1)*Suma de F1s, F1 (Promedio), F1 (desviación estándar), Precisión (promedio), Precisión (desviación estándar), Recall (promedio), Recall (desviación estándar), Entropía (promedio), Entropía (desviación estándar), "
@@ -282,6 +282,8 @@ def evaluate_memory_config(config: Configuration) -> float:  #(self, config: Con
 #def test_memories(domain, prefix, experiment):
     domain = constants.domain
     prefix = constants.partial_prefix
+    training_stage = constants.training_stage
+
     experiment = 1
     #tolerance = config["tolerance"]
     #sigma = config["sigma"]
@@ -303,15 +305,15 @@ def evaluate_memory_config(config: Configuration) -> float:  #(self, config: Con
     gc.collect()
 
     training_features_filename = prefix + constants.features_name + suffix
-    training_features_filename = constants.data_filename(training_features_filename, i)
+    training_features_filename = constants.data_filename(training_features_filename, training_stage, i)
     training_labels_filename = prefix + constants.labels_name + suffix
-    training_labels_filename = constants.data_filename(training_labels_filename, i)
+    training_labels_filename = constants.data_filename(training_labels_filename, training_stage, i)
 
     suffix = constants.testing_suffix
     testing_features_filename = prefix + constants.features_name + suffix
-    testing_features_filename = constants.data_filename(testing_features_filename, i)
+    testing_features_filename = constants.data_filename(testing_features_filename, training_stage, i)
     testing_labels_filename = prefix + constants.labels_name + suffix
-    testing_labels_filename = constants.data_filename(testing_labels_filename, i)
+    testing_labels_filename = constants.data_filename(testing_labels_filename, training_stage, i)
 
     training_features = np.load(training_features_filename)
     training_labels = np.load(training_labels_filename)

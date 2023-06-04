@@ -30,6 +30,9 @@ full_prefix = ''
 partial_prefix = ''
 learn_params_prefix ='learn_params'
 training_stage_suffix = '-training-stage'
+training_stage = 0
+learned_images_suffix = 'learned-images'
+learned_labels_suffix = 'learned-labels'
 
 def occlusion_suffix(occlusion):
     return '' if occlusion is None else '-occ_' + str(int(round(occlusion*100))).zfill(3)
@@ -226,7 +229,7 @@ response_size_idx = 6
 
 mem_conf_prefix = 'mem_conftrix'
 
-dir_folder_learned_images_prefix = 'runs/images/fold-'
+dir_folder_learned_images_prefix = 'runs/images/training-stage-' + str(training_stage) + '/' + 'fold-'
 
 def memory_conftrix_filename(fill, training_stage, fold):
     prefix = mem_conf_prefix + '-fll_' + str(fill).zfill(3)
