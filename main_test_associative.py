@@ -662,13 +662,14 @@ def split_by_label(fl_pairs):
         label_dict[label].append(features)
     return label_dict.items()
 
-def run_optimization(domain, experiment, training_stage):
-    constants.training_stage = training_stage
+def run_optimization(domain, experiment):
+    
     best_configuration = smac.optimize()
+    return ""
 
-def increase_data(domain,experiment):  
+def increase_data(domain,experiment):     
     iam.increase_data()
-    return 
+    return ""
 
 def test_memories(domain, experiment, training_stage):
 
@@ -1413,7 +1414,8 @@ def main(action, training_stage):#, occlusion = None, bar_type= None, tolerance 
         characterize_features(constants.domain, action)
     elif action == constants.OPTIMIZATION:
         # Optimization of iota, kappa, tolerance and size memory using the SMAC algorithm
-        run_optimization(constants.domain, action, training_stage)
+        constants.training_stage = training_stage
+        run_optimization(constants.domain, action)
     elif action == constants.INCREASE:
         # Increase the data in emnist using the iam dataset
         constants.training_stage = training_stage
