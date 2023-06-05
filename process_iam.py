@@ -622,15 +622,7 @@ def count_frecuencies():
 
 
 def increase_data():
-    
-    images_recognized_filename = constants.learned_images_suffix 
-    images_recognized_filename = constants.data_filename(images_recognized_filename, constants.training_stage)
-    labels_recognized_filename = constants.learned_labels_suffix
-    labels_recognized_filename = constants.data_filename(labels_recognized_filename, constants.training_stage)
-    images_recognized = np.load(images_recognized_filename,)
-    labels_recognized = np.load(labels_recognized_filename)
-    increaseEMNIST(images_recognized, labels_recognized )
-
+       
     if os.path.isfile(smac.statsfilename):
         df = pd.read_csv(smac.statsfilename, encoding='utf-8')
         #Get row whit the min F1 value  
