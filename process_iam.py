@@ -622,7 +622,15 @@ def count_frecuencies():
 
 
 def increase_data():
-       
+    
+    images_recognized_filename = constants.learned_images_suffix 
+    images_recognized_filename = constants.data_filename(images_recognized_filename, constants.training_stage)
+    labels_recognized_filename = constants.learned_labels_suffix
+    labels_recognized_filename = constants.data_filename(labels_recognized_filename, constants.training_stage)
+    images_recognized = np.load(images_recognized_filename,)
+    labels_recognized = np.load(labels_recognized_filename)
+    increaseEMNIST(images_recognized, labels_recognized )
+
     if os.path.isfile(smac.statsfilename):
         df = pd.read_csv(smac.statsfilename, encoding='utf-8')
         #Get row whit the min F1 value  
@@ -764,7 +772,7 @@ def increaseEMNIST(images_recognized, labels_recognized ):
 
     all_data, all_labels = sklearn.utils.shuffle(all_data, all_labels)
 
-    new_labels = []
+    new_labels = []   
     new_images = []
 
     cantidades = {}
@@ -777,8 +785,8 @@ def increaseEMNIST(images_recognized, labels_recognized ):
 
     for label, image in zip(all_labels, all_data):        
         if cantidades[label] <= minimo:           
-            new_images.append([image])
-            new_labels = np.append(new_labels, int(label))
+            new_images.append(image)
+            new_labels.append(label)
             cantidades[label] += 1            
         loop.set_description("Processing aumented EMNIST_dataset...".format(contador))
         loop.update(1)
