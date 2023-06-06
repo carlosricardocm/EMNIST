@@ -1373,9 +1373,10 @@ def main(action, training_stage):#, occlusion = None, bar_type= None, tolerance 
         # Trains the neural networks.
         training_percentage = constants.nn_training_percent
         model_prefix = constants.model_name
-        stats_prefix = constants.stats_model_name        
+        stats_prefix = constants.stats_model_name 
+        constants.training_stage = traning.stage      
 
-        history = convnet.train_networks(training_stage, training_percentage, model_prefix, action)
+        history = convnet.train_networks(training_percentage, model_prefix, action)
         save_history(history, training_stage, stats_prefix)
     elif (action == constants.GET_FEATURES):
         # Generates features for the memories using the previously generated

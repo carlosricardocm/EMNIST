@@ -720,11 +720,11 @@ def increase_data():
                         img_produced = snnet.decoder.predict(f)
                         img_produced = img_produced[0]                        
                         pixels = img_produced.reshape(28,28) * 255
+                        pixels = pixels.round().astype(np.uint8)                        
                         #Save label and image recognized
                         labels_recognized.append(lwam)
                         images_recognized.append(pixels)                        
-                        #Save image recognized to disk
-                        pixels = pixels.round().astype(np.uint8)                        
+                        #Save image recognized to disk                        
                         img_name = os.path.join(constants.dir_folder_learned_images_prefix + str(n), dt.now().strftime("%Y%m%d-%H%M%S") + '-' + str(lwam) + '.png' )                        
                         png.from_array(pixels, 'L;8').save(img_name)                  
 

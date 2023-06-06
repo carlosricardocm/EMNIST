@@ -328,7 +328,7 @@ class EarlyStoppingAtLossCrossing(Callback):
 
 
 
-def train_networks(training_stage, training_percentage, filename, experiment):
+def train_networks(training_percentage, filename, experiment):
 
     stages = constants.training_stages
 
@@ -385,7 +385,7 @@ def train_networks(training_stage, training_percentage, filename, experiment):
             (testing_labels, testing_data),return_dict=True)
         histories.append(history)
 
-        model.save(constants.model_filename(filename, training_stage, n))
+        model.save(constants.model_filename(filename, constants.training_stage, n))
 
     return histories
 

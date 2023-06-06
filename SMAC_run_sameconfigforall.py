@@ -41,7 +41,11 @@ headstr = "Score = (-1)*Suma de F1s, F1 (Promedio), F1 (desviación estándar), 
 for j in range(n_memories):
     headstr += "EAM{0} tolerancia, EAM{0} sigma, EAM{0} iota, EAM{0} kappa, EAM{0} Tamaño, EAM{0} F1, EAM{0} Precision, EAM{0} Recall, EAM{0} Entropia, ".format(j)
 
-
+if not os.path.exists(smac_outdir):
+        os.makedirs(smac_outdir)
+    if not os.path.exists(os.path.join(os.getcwd(), statsfilename)):
+        with open(os.path.join(os.getcwd(), statsfilename), "w+", encoding="utf-8") as outf:
+            outf.write(headstr[:-2]+"\n")
 
 
 # SMAC necesita 4 componentes:
@@ -334,11 +338,7 @@ def optimize():
     print("optimize")
 
   
-    if not os.path.exists(smac_outdir):
-        os.makedirs(smac_outdir)
-    if not os.path.exists(os.path.join(os.getcwd(), statsfilename)):
-        with open(os.path.join(os.getcwd(), statsfilename), "w+", encoding="utf-8") as outf:
-            outf.write(headstr[:-2]+"\n")
+    
     # Generamos una configuración para todas las memoria, con el conocimiento a priori que contamos
     config = []
     config.append(UniformIntegerHyperparameter("tolerance", lower=0, upper=maxtol, default_value=prior_tolerance)) #(1, 10), default=4))
@@ -360,7 +360,7 @@ def optimize():
     #"wallclock_limit": 7*86400, #863400 = 24hrs = 2 *  12 hrs = 12*60*60 secs
     #"n-workers":32,  # Use 32 workers
     "deterministic":"true", # hace que solo 1 semilla se pruebe en cada ejecucion de la funcion objetivo
-    "runcount-limit": 100, #Num evaluations
+    "runcount-limit": 5, #Num evaluations
     "n_trials":"1",  # Evaluated max 500 trials
     })
 
