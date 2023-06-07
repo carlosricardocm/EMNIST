@@ -360,7 +360,7 @@ def optimize():
     #"wallclock_limit": 7*86400, #863400 = 24hrs = 2 *  12 hrs = 12*60*60 secs
     #"n-workers":32,  # Use 32 workers
     "deterministic":"true", # hace que solo 1 semilla se pruebe en cada ejecucion de la funcion objetivo
-    "runcount-limit": 5, #Num evaluations
+    "runcount-limit": 1, #Num evaluations
     "n_trials":"1",  # Evaluated max 500 trials
     })
 

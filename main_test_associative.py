@@ -1374,7 +1374,7 @@ def main(action, training_stage):#, occlusion = None, bar_type= None, tolerance 
         training_percentage = constants.nn_training_percent
         model_prefix = constants.model_name
         stats_prefix = constants.stats_model_name 
-        constants.training_stage = traning.stage      
+        constants.training_stage = training_stage      
 
         history = convnet.train_networks(training_percentage, model_prefix, action)
         save_history(history, training_stage, stats_prefix)
