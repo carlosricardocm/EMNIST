@@ -486,9 +486,10 @@ def normalize_shape(img_list, x_size=192, y_size=48, plot=False):
 
 def preprocess_emnist():
     file_exists = exists(os.path.join(path_file,file_processed))
-    (train_images, train_labels), (test_images, test_labels) = emnist.load_data(type='balanced')
+   
 
     if not file_exists:
+        (train_images, train_labels), (test_images, test_labels) = emnist.load_data(type='balanced')
         print("Pre-Processing EMNIST images...")
         
         train_images_preprocesadas = np.zeros(np.shape(train_images))
@@ -497,14 +498,14 @@ def preprocess_emnist():
         loop = tqdm(total = size, position=0, leave=False)
         contador = 0
         for i, (img_train, img_test) in enumerate(zip( train_images, test_images)):        
-            #cv2.imshow('original image', img)
+            #cv2.imshow('original image', img_train)
             img_contrast_train = enhance_contrast_otsu(img_train)
             img_contrast_test = enhance_contrast_otsu(img_test)
-            #cv2.imshow('contrast image', image_contrast)
+            #cv2.imshow('contrast image', img_contrast_train)
             img_slope_train = slope_correction(img_contrast_train)
             img_slope_test = slope_correction(img_contrast_test)
 
-            #cv2.imshow('slope image', image_slope)                
+            #cv2.imshow('slope image', img_slope_train)                
             train_images[i] = img_slope_train
             test_images[i] = img_slope_test
             loop.set_description("Processing EMNIST images...".format(contador))

@@ -36,6 +36,8 @@ import SMAC_run_sameconfigforall as smac
 import constants
 import convnet
 from associative import AssociativeMemory
+from associative import AssociativeMemorySystem
+from associative import AssociativeMemoryError
 
 #For progress bar
 from tqdm import tqdm
@@ -620,6 +622,56 @@ def count_frecuencies():
 
     return
 
+def msize_features(features, msize, min_value, max_value):
+    return np.round((msize-1)*(features-min_value) / (max_value-min_value)).astype(np.int16)
+
+# def increase():
+    
+#     model_prefix = constants.model_name
+#     training_stage = constants.training_stage
+
+#     if os.path.isfile(smac.statsfilename):
+#         df = pd.read_csv(smac.statsfilename, encoding='utf-8')
+#         #Get row whit the min F1 value  
+#         minValueIndex = df.idxmin()
+#         tolerance = df.iloc[minValueIndex[0], 9]
+#         sigma = df.iloc[minValueIndex[0], 10]
+#         iota = df.iloc[minValueIndex[0], 11]
+#         kappa = df.iloc[minValueIndex[0], 12]
+#         msize = df.iloc[minValueIndex[0], 13]
+
+
+#         for fold in range(constants.n_folds):
+#             training_features_filename = constants.features_name + constants.training_suffix 
+#             training_features_filename = constants.data_filename(training_features_filename, training_stage,  fold)
+#             training_labels_filename = constants.labels_name + constants.training_suffix
+#             training_labels_filename = constants.data_filename(training_labels_filename, training_stage, fold)
+
+#             iamfeature_filename = constants.features_name + constants.iam_suffix
+#             iamfeature_filename = constants.data_filename(iamfeature_filename, training_stage, fold)
+
+#             trf = np.load(training_features_filename)
+#             trl = np.load(training_labels_filename)
+
+#             triam = np.load(iamfeature_filename)
+
+#             maximum = trf.max()
+#             minimum = trf.min()
+#             trf = msize_features(trf, msize, minimum, maximum)
+
+#             ams = AssociativeMemorySystem(constants.all_labels, constants.domain, msize,
+#             tolerance, sigma, iota, kappa)
+            
+#             for label, features in zip(trl, trf):
+#                 ams.register(label,features)
+
+#             new_data = convnet.process_samples(triam, model_prefix, fold, decode=True)
+#             new_data = ams_process_samples(new_data, ams, minimum, maximum, decode=True)
+#             new_data = convnet.reprocess_samples(new_data, model_prefix, fold)
+
+def msize_features(features, msize, min_value, max_value):
+    return np.round((msize-1)*(features-min_value) / (max_value-min_value)).astype(np.int16)
+
 
 def increase_data():
        
@@ -654,6 +706,9 @@ def increase_data():
             training_labels_filename = constants.labels_name + constants.training_suffix
             training_labels_filename = constants.data_filename(training_labels_filename, training_stage, n)
 
+            iamdata_filename = constants.data_name + constants.iam_suffix
+            iamdata_filename = constants.data_filename(iamdata_filename, training_stage, n)
+
             iamfeature_filename = constants.features_name + constants.iam_suffix
             iamfeature_filename = constants.data_filename(iamfeature_filename, training_stage, n)
            
@@ -661,28 +716,29 @@ def increase_data():
             trf = np.load(training_features_filename)
             trl = np.load(training_labels_filename)
 
-            triam = np.load(iamfeature_filename)
+            data_iam = np.load(iamdata_filename)
+            features_iam = np.load(iamfeature_filename)           
 
             min_value = trf.min()
             max_value = trf.max()
 
-            min_value_iam = triam.min()
-            max_value_iam = triam.max()
+            min_value_iam = features_iam.min()
+            max_value_iam = features_iam.max()
 
             nmems = constants.n_labels
             domain = constants.domain
 
             ams = dict.fromkeys(range(nmems))
             entropy = np.zeros((nmems, ), dtype=np.float64)
-            max_msize = 0 # para normalizacion
-
+         
             for j in ams:
-                if msize > max_msize:
-                    max_msize = msize
                 ams[j] = AssociativeMemory(domain, msize, tolerance, sigma, iota, kappa)
         
-            trf_rounded = np.round((trf-min_value) * (max_msize - 1) / (max_value-min_value)).astype(np.int16)
-            triam_rounded = np.round((triam-min_value_iam) * (max_msize - 1) / (max_value_iam-min_value_iam)).astype(np.int16)
+            # trf_rounded = np.round((trf-min_value) * (max_msize - 1) / (max_value-min_value)).astype(np.int16)
+            # triam_rounded = np.round((triam-min_value_iam) * (max_msize - 1) / (max_value_iam-min_value_iam)).astype(np.int16)
+            trf_rounded = msize_features(trf, msize, min_value, max_value)
+            #triamf_rounded = msize_features(triamf, msize, min_value, max_value)
+
 
             # Registration
             for features, label in zip(trf_rounded, trl):
@@ -700,33 +756,47 @@ def increase_data():
             #Create folder for each stage
             os.makedirs(constants.dir_folder_learned_images_prefix+str(n), exist_ok=True)
                             
-
-            for feature_net, feature in zip(triam,triam_rounded):            
+            count = 0 
+            for original_image, feature_image in zip(data_iam, features_iam):            
                 memories = []
-                weights = {}
+                weights = {}              
+                #feature = snnet.encoder.predict(np.reshape(original_image, (1,28, 28, 1)))
+                #feature = msize_features(feature[0], msize, feature[0].min(), feature[0].max_value)
+                #feature = np.reshape(feature[0], (1, len(feature[0])))               
+                feature_ams = msize_features(feature_image, msize, min_value_iam, max_value_iam)
                 for k in ams:
-                    recognized, weight = ams[k].recognize(feature)
+                    recognized, weight = ams[k].recognize(feature_ams)
                     if recognized:
                         memories.append(k)
                         weights[k] = weight
+                       
                 #At least one memory recognize the feature
                 if len(memories) != 0:
-                    lwam = get_label(memories,weights,entropy) 
-                    f = tf.constant([feature_net])                
-                    labels = snnet.classifier.predict(f)
+                    lwam = get_label(memories,weights,entropy)
+                    #f = np.reshape(feature_net, (1, len(feature_net)))                                                                          
+                    labels = snnet.classifier.predict(np.array([feature_image]))
                     lsnnet = np.argmax(labels, axis=1)
                      #if decoder and memories say it's the same label
-                    if(lwam == lsnnet):                    
-                        img_produced = snnet.decoder.predict(f)
-                        img_produced = img_produced[0]                        
-                        pixels = img_produced.reshape(28,28) * 255
-                        pixels = pixels.round().astype(np.uint8)                        
+                    if(lwam == lsnnet):
+                        #cv2.imshow("imagen_original" , original_image)                         
+                        #recall, _, _ = ams[lwam].recall(feature_ams)
+                        #recall = rsize_recall(recall, ams[lwam].m, min_value, max_value)
+                        #recall = np.reshape(recall, (1, len(recall)))                        
+                        #img_produced = snnet.decoder.predict(recall)
+                        #img_produced = img_produced[0]                        
+                        #pixels = img_produced.reshape(28,28) * 255
+                        #pixels = pixels.round().astype(np.uint8) 
+                        #cv2.imshow("image ams", pixels)                       
                         #Save label and image recognized
                         labels_recognized.append(lwam)
-                        images_recognized.append(pixels)                        
+                        #images_recognized.append(original_image)
+                        original_image = original_image.reshape(28,28) * 255
+                        original_image = original_image.round().astype(np.uint8)
+                        images_recognized.append(original_image)                        
+                        #cv2.imshow('original', original_image)                        
                         #Save image recognized to disk                        
-                        img_name = os.path.join(constants.dir_folder_learned_images_prefix + str(n), dt.now().strftime("%Y%m%d-%H%M%S") + '-' + str(lwam) + '.png' )                        
-                        png.from_array(pixels, 'L;8').save(img_name)                  
+                        #img_name = os.path.join(constants.dir_folder_learned_images_prefix + str(n), dt.now().strftime("%Y%m%d-%H%M%S") + '-' + str(lwam) + '.png' )                        
+                        #png.from_array(original_image, 'L;8').save(img_name)                  
 
         #aqui va el proceso de aumentar el corpus
         increaseEMNIST(images_recognized, labels_recognized )   
@@ -735,9 +805,11 @@ def increase_data():
 
     return None
 
-
+def rsize_recall(recall, msize, min_value, max_value):
+    return (max_value - min_value)*recall/(msize-1) + min_value
 
 def increaseEMNIST(images_recognized, labels_recognized ):
+#def increaseEMNIST():
     data = np.load(pre.preprocess_emnist())
     train_images = data['train_images']
     train_labels = data['train_labels']
@@ -749,8 +821,13 @@ def increaseEMNIST(images_recognized, labels_recognized ):
     images_recognized_filename = constants.data_filename(images_recognized_filename, constants.training_stage)
     labels_recognized_filename = constants.learned_labels_suffix
     labels_recognized_filename = constants.data_filename(labels_recognized_filename, constants.training_stage)    
+    
     np.save(images_recognized_filename, images_recognized)
     np.save(labels_recognized_filename, labels_recognized)
+    #images_recognized = np.load(images_recognized_filename)
+
+    images_recognized = np.reshape(images_recognized, (len(images_recognized), 28,28))
+    labels_recognized = np.load(labels_recognized_filename )
 
     all_data = np.concatenate((train_images, test_images), axis=0)
     all_labels = np.concatenate((train_labels, test_labels), axis= 0)
@@ -789,36 +866,14 @@ def increaseEMNIST(images_recognized, labels_recognized ):
     for (key, value) in freq.items():
          print (key, " -> ", value)
 
-    train_images , test_images = train_test_split(new_images, test_size=0.14)
-    train_labels, test_labels = train_test_split(new_labels, test_size=0.14)
-
+    train_images , test_images, train_labels, test_labels = train_test_split(all_data, all_labels, test_size=0.14)
+  
     path_file = pre.path_file
     file_processed = pre.file_processed
 
     np.savez(os.path.join(path_file,file_processed) , train_images=train_images, train_labels=train_labels, test_images=test_images, test_labels=test_labels )
 
     return None
-
-
-def get_label(memories, weights = None, entropies = None):
-    if len(memories) == 1:
-        return memories[0]
-    random.shuffle(memories)
-    if (entropies is None) or (weights is None):
-        return memories[0]
-    else:
-        i = memories[0] 
-        entropy = entropies[i]
-        weight = weights[i]
-        penalty = entropy/weight if weight > 0 else float('inf')
-        for j in memories[1:]:
-            entropy = entropies[j]
-            weight = weights[j]
-            new_penalty = entropy/weight if weight > 0 else float('inf')
-            if new_penalty < penalty:
-                i = j
-                penalty = new_penalty
-        return i
 
 
 def get_label(memories, weights = None, entropies = None):

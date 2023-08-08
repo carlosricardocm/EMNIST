@@ -179,6 +179,18 @@ def memories_name(i = -1, occlusion = None, bars_type = None, tolerance = 0):
             + bars_type_suffix(bars_type) + tolerance_suffix(tolerance)
     return mem_name
 
+def print_counter(n, every, step = 1, symbol = '.', prefix = ''):
+    if n == 0:
+        return
+    e = n % every
+    s = n % step
+    if (e != 0) and (s != 0):
+        return
+    counter = symbol
+    if e == 0:
+        counter =  ' ' + prefix + str(n) + ' '
+    print(counter, end = '', flush=True)
+
 # Categories prefixes.
 model_name = 'model'
 stats_model_name = 'model_stats'

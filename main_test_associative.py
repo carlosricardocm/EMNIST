@@ -345,23 +345,6 @@ def plot_features_graph(domain, means, stdevs, experiment, occlusion = None, bar
         plt.savefig(constants.picture_filename(filename), dpi=500)
 
 
-# def get_label(memories, entropies = None):
-
-#     # Random selection
-#     if entropies is None:
-#         i = random.atddrange(len(memories))
-#         return memories[i]
-#     else:
-#         i = memories[0] 
-#         entropy = entropies[i]
-
-#         for j in memories[1:]:
-#             if entropy > entropies[j]:
-#                 i = j
-#                 entropy = entropies[i]
-    
-#     return i
-
 def get_label(memories, weights = None, entropies = None):
     if len(memories) == 1:
         return memories[0]
@@ -669,9 +652,12 @@ def run_optimization(domain, experiment):
 
 def increase_data(domain,experiment):     
     iam.increase_data()
+    #iam.increaseEMNIST()
     return ""
 
-def test_memories(domain, experiment, training_stage):
+def test_memories(domain, experiment):
+
+    training_stage = constants.training_stage
 
     average_entropy = []
     stdev_entropy = []
@@ -837,7 +823,8 @@ def test_memories(domain, experiment, training_stage):
 
 
 
-def get_recalls(ams, msize, domain, min_value, max_value, trf, trl, tef, tel, fold, percent, training_stage):
+def get_recalls(ams, msize, domain, min_value, max_value, trf, trl, tef, tel, fold, percent):
+    training_stage = constants.training_stage
     n_mems = constants.n_labels
 
     # To store precisión, recall, accuracy and entropies
@@ -1035,7 +1022,8 @@ def get_stdev(d):
 #     return fold, stage_recalls, stage_entropies, stage_mprecision, \
 #         stage_mrecall, np.array(total_precisions), np.array(total_recalls), np.array(mismatches)
 
-def test_recalling(domain, mem_size, training_stage):
+def test_recalling(domain, mem_size):
+    training_stage  = constants.training_stage
     n_memories = constants.n_labels
     memory_fills = constants.memory_fills
     testing_folds = constants.training_stages
@@ -1052,7 +1040,7 @@ def test_recalling(domain, mem_size, training_stage):
 
     list_results = []
     for fold in range(testing_folds):
-        results = test_recalling_fold(n_memories, mem_size, domain, fold, training_stage)
+        results = test_recalling_fold(n_memories, mem_size, domain, fold)
         list_results.append(results)
     # for fold, memories, entropy, precision, recall, accuracy, \
     for fold, entropy, precision, recall, accuracy, \
@@ -1125,8 +1113,9 @@ def best_filling_percentage(precisions, recalls):
         i += 1
     return constants.memory_fills[n]
 
-def test_recalling_fold(n_memories, mem_size, domain, fold, training_stage):
+def test_recalling_fold(n_memories, mem_size, domain, fold):
     # Create the required associative memories.
+    training_stage = constants.training_stage
     ams = dict.fromkeys(range(n_memories))
     for j in ams:
         ams[j] = AssociativeMemory(domain, mem_size, tolerance=0)
@@ -1178,7 +1167,7 @@ def test_recalling_fold(n_memories, mem_size, domain, fold, training_stage):
 
         # recalls, measures, step_precision, step_recall, mis_count = get_recalls(ams, mem_size, domain, \
         measures, step_precision, step_recall, mis_count = get_recalls(ams, mem_size, domain,
-            minimum, maximum, features, labels, testing_features, testing_labels, fold, percent, training_stage)
+            minimum, maximum, features, labels, testing_features, testing_labels, fold, percent)
 
         # A list of tuples (position, label, features)
         # fold_recalls += recalls
@@ -1206,97 +1195,13 @@ def test_recalling_fold(n_memories, mem_size, domain, fold, training_stage):
     return fold, fold_entropies, fold_precision, \
         fold_recall, fold_accuracy, total_precisions, total_recalls, mismatches
 
-# def test_recalling(domain, mem_size, experiment, occlusion = None, bars_type = None, tolerance = 0):
-#     n_memories = constants.n_labels
-
-#     all_recalls = {}
-#     all_entropies = {}
-#     all_mprecision = {}
-#     all_mrecall = {}
-#     total_precisions = np.zeros((constants.training_stages, len(constants.memory_fills)))
-#     total_recalls = np.zeros((constants.training_stages, len(constants.memory_fills)))
-#     total_mismatches = np.zeros((constants.training_stages, len(constants.memory_fills)))
-
-#     xlabels = constants.memory_fills
-#     list_results = Parallel(n_jobs=constants.n_jobs, verbose=50)(
-#         delayed(test_recalling_fold)(n_memories, mem_size, domain, fold, experiment, occlusion, bars_type, tolerance) \
-#             for fold in range(constants.training_stages))
-
-#     for fold, stage_recalls, stage_entropies, stage_mprecision, stage_mrecall,\
-#         total_precision, total_recall, mismatches in list_results:
-#         all_recalls[fold] = stage_recalls
-#         for msize in stage_entropies:
-#             all_entropies[msize] = all_entropies[msize] + [stage_entropies[msize]] \
-#                 if msize in all_entropies.keys() else [stage_entropies[msize]]
-#             all_mprecision[msize] = all_mprecision[msize] + [stage_mprecision[msize]] \
-#                 if msize in all_mprecision.keys() else [stage_mprecision[msize]]
-#             all_mrecall[msize] = all_mrecall[msize] + [stage_mrecall[msize]] \
-#                 if msize in all_mrecall.keys() else [stage_mrecall[msize]]
-#             total_precisions[fold] = total_precision
-#             total_recalls[fold] = total_recall
-#             total_mismatches[fold] = mismatches
-
-#     for fold in all_recalls:
-#         list_tups = all_recalls[fold]
-#         tags = []
-#         memories = []
-#         for (idx, label, features) in list_tups:
-#             tags.append((idx, label))
-#             memories.append(np.array(features))
-        
-#         tags = np.array(tags)
-#         memories = np.array(memories)
-#         memories_filename = constants.memories_name(experiment, occlusion, bars_type, tolerance)
-#         memories_filename = constants.data_filename(memories_filename, fold)
-#         np.save(memories_filename, memories)
-#         tags_filename = constants.labels_name + constants.memory_suffix
-#         tags_filename = constants.data_filename(tags_filename, fold)
-#         np.save(tags_filename, tags)
-    
-#     main_avrge_entropies = get_means(all_entropies)
-#     main_stdev_entropies = get_stdev(all_entropies)
-#     main_avrge_mprecision = get_means(all_mprecision)
-#     main_stdev_mprecision = get_stdev(all_mprecision)
-#     main_avrge_mrecall = get_means(all_mrecall)
-#     main_stdev_mrecall = get_stdev(all_mrecall)
-    
-#     np.savetxt(constants.csv_filename('main_average_precision',experiment, occlusion, bars_type, tolerance), \
-#         main_avrge_mprecision, delimiter=',')
-#     np.savetxt(constants.csv_filename('main_average_recall',experiment, occlusion, bars_type, tolerance), \
-#         main_avrge_mrecall, delimiter=',')
-#     np.savetxt(constants.csv_filename('main_average_entropy',experiment, occlusion, bars_type, tolerance), \
-#         main_avrge_entropies, delimiter=',')
-
-#     np.savetxt(constants.csv_filename('main_stdev_precision',experiment, occlusion, bars_type, tolerance), \
-#         main_stdev_mprecision, delimiter=',')
-#     np.savetxt(constants.csv_filename('main_stdev_recall',experiment, occlusion, bars_type, tolerance), \
-#         main_stdev_mrecall, delimiter=',')
-#     np.savetxt(constants.csv_filename('main_stdev_entropy',experiment, occlusion, bars_type, tolerance), \
-#         main_stdev_entropies, delimiter=',')
-#     np.savetxt(constants.csv_filename('main_total_recalls',experiment, occlusion, bars_type, tolerance), \
-#         total_recalls, delimiter=',')
-#     np.savetxt(constants.csv_filename('main_total_mismatches',experiment, occlusion, bars_type, tolerance), \
-#         total_mismatches, delimiter=',')
-
-#     plot_pre_graph(main_avrge_mprecision*100, main_avrge_mrecall*100, main_avrge_entropies,\
-#         main_stdev_mprecision*100, main_stdev_mrecall*100, main_stdev_entropies, 'recall-', \
-#             xlabels = xlabels, xtitle = _('Percentage of memory corpus'), action = experiment,
-#             occlusion = occlusion, bars_type = bars_type, tolerance = tolerance)
-
-#     plot_pre_graph(np.average(total_precisions, axis=0)*100, np.average(total_recalls, axis=0)*100, \
-#         main_avrge_entropies, np.std(total_precisions, axis=0)*100, np.std(total_recalls, axis=0)*100, \
-#             main_stdev_entropies, 'total_recall-', \
-#             xlabels = xlabels, xtitle = _('Percentage of memory corpus'), action=experiment,
-#             occlusion = occlusion, bars_type = bars_type, tolerance = tolerance)
-
-#     print('Test completed')
-
 
 def get_all_data(prefix, domain):
+    training_stage = constants.training_stage
     data = None
 
     for stage in range(constants.training_stages):
-        filename = constants.data_filename(prefix, stage)
+        filename = constants.data_filename(prefix, training_stage, stage)
         if data is None:
             data = np.load(filename)
         else:
@@ -1335,7 +1240,8 @@ def characterize_features(domain, experiment, occlusion = None, bars_type = None
 
     plot_features_graph(domain, means, stdevs, experiment, occlusion, bars_type)
 
-def save_learn_params(mem_size, fill_percent, training_stage):
+def save_learn_params(mem_size, fill_percent):
+    training_stage = constants.training_stage
     name = constants.learn_params_name()
     filename = constants.data_filename(name, training_stage)
     np.save(filename, np.array([mem_size, fill_percent], dtype=int))  
@@ -1368,13 +1274,13 @@ def main(action, training_stage):#, occlusion = None, bar_type= None, tolerance 
     The main function distributes work according to the options chosen in the
     command line.
     """
-
+    constants.training_stage = training_stage  
     if (action == constants.TRAIN_NN):
         # Trains the neural networks.
         training_percentage = constants.nn_training_percent
         model_prefix = constants.model_name
         stats_prefix = constants.stats_model_name 
-        constants.training_stage = training_stage      
+            
 
         history = convnet.train_networks(training_percentage, model_prefix, action)
         save_history(history, training_stage, stats_prefix)
@@ -1387,9 +1293,10 @@ def main(action, training_stage):#, occlusion = None, bar_type= None, tolerance 
         features_prefix = constants.features_name #'features'#constants.features_name(action)
         labels_prefix = constants.labels_name
         data_prefix = constants.data_name
+       
 
         history = convnet.obtain_features(model_prefix, features_prefix, labels_prefix, data_prefix,
-            training_percentage, am_filling_percentage, action, training_stage)
+            training_percentage, am_filling_percentage, action)
         save_history(history, training_stage, features_prefix)
     elif (action == constants.GET_FEATURES_IAM):
         # Generates features for the memories using the previously generated
@@ -1400,10 +1307,8 @@ def main(action, training_stage):#, occlusion = None, bar_type= None, tolerance 
         #Here I can modify the prefix to add the stage
         features_prefix = constants.features_name #features       
         data_prefix = constants.data_name  # 'data'
-        action = constants.GET_FEATURES # 0
-        #learning stage starting in 0
-        learning_stage = 0
-        constants.training_stage = training_stage
+        action = constants.GET_FEATURES # 0       
+     
 
         convnet.obtain_features_iam(model_prefix, features_prefix, data_prefix,
                 action)
@@ -1412,43 +1317,26 @@ def main(action, training_stage):#, occlusion = None, bar_type= None, tolerance 
     elif action == constants.CHARACTERIZE:
         # Generates graphs of mean and standard distributions of feature values,
         # per digit class.
+     
         characterize_features(constants.domain, action)
     elif action == constants.OPTIMIZATION:
         # Optimization of iota, kappa, tolerance and size memory using the SMAC algorithm
-        constants.training_stage = training_stage
         run_optimization(constants.domain, action)
     elif action == constants.INCREASE:
         # Increase the data in emnist using the iam dataset
-        constants.training_stage = training_stage
-        increase_data(constants.domain, action)
+         increase_data(constants.domain, action)
     elif (action == constants.EXP_1) or (action == constants.EXP_2):
-        # The domain size, equal to the size of the output layer of the network.
-        best_memory_size = test_memories(constants.domain, action, training_stage)
-        print(f'Best memory size: {best_memory_size}')
-        best_filling_percent = test_recalling(constants.domain, best_memory_size, training_stage)
-        print(f'Best filling percent: {best_filling_percent}')
-        save_learn_params(best_memory_size, best_filling_percent, training_stage)
-    # elif (action == constants.EXP_3):
-    #     test_recalling(constants.domain, constants.partial_ideal_memory_size, action)
-    # elif (action == constants.EXP_4):
-    #     convnet.remember(action)
-    # elif (constants.EXP_5 <= action) and (action <= constants.EXP_10):
-    #     # Generates features for the data sections using the previously generate
-    #     # neural network, introducing (background color) occlusion.
-    #     training_percentage = constants.nn_training_percent
-    #     am_filling_percentage = constants.am_filling_percent
-    #     model_prefix = constants.model_name
-    #     features_prefix = constants.features_name(action, occlusion, bar_type)
-    #     labels_prefix = constants.labels_name
-    #     data_prefix = constants.data_name
+        #best_memory_size = 64
+        #best_filling_percent = test_recalling(constants.domain, best_memory_size)
+        #print(f'Best filling percent: {best_filling_percent}')
+        #save_learn_params(best_memory_size, best_filling_percent)
 
-    #     history = convnet.obtain_features(model_prefix, features_prefix, labels_prefix, data_prefix,
-    #         training_percentage, am_filling_percentage, action, occlusion, bar_type)
-    #     save_history(history, features_prefix)
-    #     characterize_features(constants.domain, action, occlusion, bar_type)
-    #     test_recalling(constants.domain, constants.partial_ideal_memory_size,
-    #         action, occlusion, bar_type, tolerance)
-    #     convnet.remember(action, occlusion, bar_type, tolerance)
+        # The domain size, equal to the size of the output layer of the network.
+        best_memory_size = test_memories(constants.domain, action)
+        print(f'Best memory size: {best_memory_size}')
+        best_filling_percent = test_recalling(constants.domain, best_memory_size)
+        print(f'Best filling percent: {best_filling_percent}')
+        save_learn_params(best_memory_size, best_filling_percent)
 
 
 
