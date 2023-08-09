@@ -940,9 +940,16 @@ def preprocess_iam():
 
                 print("Downloading IAM ASCII Dataset")
 
-                url='https://fki.tic.heia-fr.ch/DBs/iamDB/data/ascii.tgz'
-                res = requests.get(url, stream=True, cookies= {'session': 'eyJlbWFpbCI6InJpY2FyZG9fY21AaG90bWFpbC5jb20iLCJsYXN0cGFnZSI6Ii8iLCJsb2dnZWRpbiI6dHJ1ZSwidXNlcmlkIjo3ODU2M30.ZHptgA.c2ztOPsuuE0g45dzzUEjk3wF5P4'}) 
+                s  = requests.Session()
+                url_base = 'https://fki.tic.heia-fr.ch'
 
+                s.get(url_base + '/login')
+
+                s.post(url_base + '/login',  data={'email': 'ricardo_cm@hotmail.com', 'password': 'skorpy2283'})
+
+                res = s.get(url_base + '/DBs/iamDB/data/ascii.tgz', stream=True)
+
+                
                 with open(os.path.join(dir_folder_ascii_iam, 'ascii.tgz' ), 'wb') as f:
                     total_length = int(res.headers.get('content-length'))
                     for chunk in progress.bar(res.iter_content(chunk_size=1024), expected_size=(total_length/1024) + 1): 
@@ -956,9 +963,8 @@ def preprocess_iam():
                     for item in tqdm(iterable=tar.getmembers(), total=len(tar.getmembers())):
                         tar.extract(member=item, path=dir_folder_ascii_iam)
 
-                print("Downloading IAM Lines Dataset")
-                url='https://fki.tic.heia-fr.ch/DBs/iamDB/data/lines.tgz'
-                res = requests.get(url, stream=True, cookies= {'session': 'eyJlbWFpbCI6InJpY2FyZG9fY21AaG90bWFpbC5jb20iLCJsYXN0cGFnZSI6Ii8iLCJsb2dnZWRpbiI6dHJ1ZSwidXNlcmlkIjo3ODU2M30.ZHptgA.c2ztOPsuuE0g45dzzUEjk3wF5P4'}) 
+                print("Downloading IAM Lines Dataset")                                
+                res = s.get(url_base + '/DBs/iamDB/data/lines.tgz', stream=True)
 
                 with open(os.path.join(dir_folder_lines_iam, 'lines.tgz' ), 'wb') as f:
                     total_length = int(res.headers.get('content-length'))
