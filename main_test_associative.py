@@ -34,6 +34,8 @@ from associative import AssociativeMemory
 import SMAC_run_sameconfigforall as smac
 import process_iam as iam
 
+os.environ['CUDA_VISIBLE_DEVICES']='1'
+
 # Translation
 gettext.install('ame', localedir=None, codeset=None, names=None)
 
