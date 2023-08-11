@@ -33,6 +33,7 @@ from associative import AssociativeMemory
 
 import SMAC_run_sameconfigforall as smac
 import process_iam as iam
+import os
 
 os.environ['CUDA_VISIBLE_DEVICES']='1'
 
