@@ -534,7 +534,7 @@ def chop(image, offset=16, plot=False):
        if i+crop_size < weight:
         # slice image[initial_row:end_row , initial_columns:end_column]          
         chop = np.array(image[0:height,i:i+crop_size].copy())                
-        cv2.imshow('chop_original',chop)        
+        #cv2.imshow('chop_original',chop)        
         #Find countours        
         #--- choosing the right kernel
         #--- kernel size of 25 rows (to join dots above letters 'i' and 'j')
@@ -545,31 +545,34 @@ def chop(image, offset=16, plot=False):
 
         #--- create an image for view_only with contours
         img_rect = cv2.merge((chop,chop,chop))
-        #for cnt in contours:
-        x, y, w, h = cv2.boundingRect(contours[0])
-        cv2.rectangle(img_rect, (x, y), (x + w, y + h), (0, 255, 0), 2)
-        #cv2.imshow('bounded', img_rect)
-        # Crop the image based on the bounding rectangle       
-        cropped_image = chop[y:y+h, x:x+w]
-        # Resize the image to the EMNIST SIZE           
-        resized_image = cv2.resize(cropped_image, (28,28), interpolation = cv2.INTER_AREA)               
-        #cv2.imshow('final', resized_image)
+        
+        for cnt in contours:
+            x, y, w, h = cv2.boundingRect(contours[0])
+            cv2.rectangle(img_rect, (x, y), (x + w, y + h), (0, 255, 0), 2)
+            #cv2.imshow('bounded', img_rect)
+            # Crop the image based on the bounding rectangle       
+            cropped_image = chop[y:y+h, x:x+w]
+            # Resize the image to the EMNIST SIZE           
+            resized_image = cv2.resize(cropped_image, (28,28), interpolation = cv2.INTER_AREA)               
+            #cv2.imshow('final', resized_image)
+
+            images.append(resized_image)
                    
 
-        # The image is resized from 16x16 to 28X28 adding zeros to left and right size
-        # 0 zero padded to the top, 0 zero padded to the bottom, 6 zero padded to left, 6 zero padded to right
-        #chop = np.pad(chop, ((0,0),(6,6)), 'constant')
+            # The image is resized from 16x16 to 28X28 adding zeros to left and right size
+            # 0 zero padded to the top, 0 zero padded to the bottom, 6 zero padded to left, 6 zero padded to right
+            #chop = np.pad(chop, ((0,0),(6,6)), 'constant')
         
 
-        if plot:
-            dest_folder_images = os.path.join('images','iam')
-            img_name = os.path.join(os.path.join(dest_folder_images , dt.now().strftime("%Y%m%d-%H%M%S.%f")[:-3] + '.png' ) )
-            im = Image.fromarray(resized_image)
-            im.save(img_name)
-            #png.from_array(chop, 'L;8').save(os.path.join(dest_folder_images, img_name))         
-            #cv2.imshow('chop', chop) 
+            if plot:
+                dest_folder_images = os.path.join('images','iam')
+                img_name = os.path.join(os.path.join(dest_folder_images , dt.now().strftime("%Y%m%d-%H%M%S.%f")[:-3] + '.png' ) )
+                im = Image.fromarray(resized_image)
+                im.save(img_name)
+                #png.from_array(chop, 'L;8').save(os.path.join(dest_folder_images, img_name))         
+                #cv2.imshow('chop', chop) 
 
-        images.append(resized_image)
+        
 
     return images
      
@@ -709,8 +712,8 @@ def experiment2():
         kappa = df.iloc[minValueIndex[0], 12]
         msize = df.iloc[minValueIndex[0], 13]
 
-        iota = 0
-        kappa  = 0
+        #iota = 0
+        #kappa  = 0
 
         all_images, all_lines, all_labes = convnet.get_data_iam(entrenamiento=True)
 
@@ -1049,9 +1052,9 @@ def proccess_line(pd_line, pd_words, iam_sources_path, destination_folder):
 
 
         words = pd_line.word
-        print(f"La linea sin modificar es:{words}" )
-        words = re.sub(r'[|"\'@#$,.:; ]', '', words)
-        print(f"La linea modificada es:{words}" )
+        #print(f"La linea sin modificar es:{words}" )
+        words = re.sub(r'[|"\'@#$,.-_+*%/&#!:; ]', '', words)
+        #print(f"La linea modificada es:{words}" )
 
         image_contrast = enhance_contrast_otsu(line_filename)
         image_slope = slope_correction(255-image_contrast)
