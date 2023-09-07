@@ -658,6 +658,10 @@ def increase_data(domain,experiment):
     #iam.increaseEMNIST()
     return ""
 
+def experiment2(domain,experiment):     
+    iam.experiment2()    
+    return ""
+
 def test_memories(domain, experiment):
 
     training_stage = constants.training_stage
@@ -1267,6 +1271,33 @@ def save_history(history, training_stage, prefix):
     with open(constants.json_filename(prefix, training_stage), 'w') as outfile:
         json.dump(stats, outfile)
 
+
+def levenshtein(s, t):
+    # create two work vectors of integer distances
+    v0 = np.zeros((len(t)+1), dtype=int)
+    v1 = np.zeros((len(t)+1), dtype=int)
+    # initialize v0 (the previous row of distances)
+    # that distance is the number of characters to append to  s to make t.
+    for i in range(len(t)+1):
+        v0[i] = i
+    for i in range(len(s)):
+        # calculate v1 (current row distances) from the previous row v0
+        v1[0] = i + 1
+        # use formula to fill in the rest of the row
+        for j in range(len(t)):
+            deletionCost = v0[j + 1] + 1
+            insertionCost = v1[j] + 1
+            if s[i] == t[j]:
+                substitutionCost = v0[j]
+            else:
+                substitutionCost = v0[j] + 1
+            v1[j + 1] = min(deletionCost, insertionCost, substitutionCost)
+        # copy v1 (current row) to v0 (previous row) for next iteration
+        # since data in v1 is always invalidated, a swap without copy could be more efficient
+        v0, v1 = v1, v0
+    # after the last swap, the results of v1 are now in v0
+    return v0[len(t)]
+
     
 ##############################################################################
 # Main section
@@ -1328,7 +1359,7 @@ def main(action, training_stage):#, occlusion = None, bar_type= None, tolerance 
     elif action == constants.INCREASE:
         # Increase the data in emnist using the iam dataset
          increase_data(constants.domain, action)
-    elif (action == constants.EXP_1) or (action == constants.EXP_2):
+    elif (action == constants.EXP_1):
         #best_memory_size = 64
         #best_filling_percent = test_recalling(constants.domain, best_memory_size)
         #print(f'Best filling percent: {best_filling_percent}')
@@ -1340,6 +1371,8 @@ def main(action, training_stage):#, occlusion = None, bar_type= None, tolerance 
         best_filling_percent = test_recalling(constants.domain, best_memory_size)
         print(f'Best filling percent: {best_filling_percent}')
         save_learn_params(best_memory_size, best_filling_percent)
+    elif (action == constants.EXP_2) :
+        experiment2(constants.domain, action)
 
 
 

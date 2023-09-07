@@ -117,33 +117,51 @@ def split(a, n):
     return (a[i*k+min(i, m):(i+1)*k+min(i+1, m)] for i in range(n))
 
 #Learning stage starts in 0
-def get_data_iam( ):
+def get_data_iam(entrenamiento=False ):
     
     # Load iam data, as part of TensorFlow.
     file_path = iam.preprocess_iam()
   
     data = np.load(file_path, allow_pickle=True)
     
-    print(len(data['iam_filename']))
+    print(len(data['images']))
     
-    #Divide the iam dataset into the number of learning stages
-    data_stage = list(split(data['iam_filename'], constants.num_stages_learning)) 
+    #Divide the iam dataset into the number of learning stages, plus one partition for testing 
+    images_stage = list(split(data['images'], constants.num_stages_learning + 1)) 
+    words_stage = list(split(data['words'], constants.num_stages_learning + 1)) 
     
 
-    all_data = []
+    all_images = []
+    all_lines =[]
+    all_labels = []
     
+    stage = int(constants.training_stage)
+
+    if entrenamiento:
+        stage = constants.num_stages_learning 
     #Select the elements for the actual training stage 
-    for line in data_stage[int(constants.training_stage)]:
-        for image in line:              
-              all_data.append(image)
-                  
-    all_data = np.array(all_data)
+    for lines, words in zip( images_stage[stage] , words_stage[ stage] ):
+        for image in lines:
+            all_images.append(image)              
+        all_lines.append(lines)
+        all_labels.append(words)
+        #for images_line, words_lines in  images:              
+        #      all_data.append(image)
+
+    all_lines = np.array(all_lines)
+    all_labels = np.array(all_labels)
+
+    all_images = np.array(all_images)
+    all_images = all_images.reshape((all_images.shape[0], img_columns, img_rows, 1))
+    all_images = all_images.astype('float32') / 255
+    
+    #all_data = np.array(all_data)
   
-    all_data = all_data.reshape((all_data.shape[0], img_columns, img_rows, 1))
-    all_data = all_data.astype('float32') / 255
+    #all_data = all_data.reshape((all_data.shape[0], img_columns, img_rows, 1))
+    #all_data = all_data.astype('float32') / 255
     
 
-    return all_data
+    return all_images, all_lines, all_labels
 
 
 def get_data(experiment, occlusion = None, bars_type = None, one_hot = False):
@@ -418,7 +436,7 @@ def obtain_features_iam(model_prefix, features_prefix, data_prefix,
     """ 
      
 
-    data_iam = get_data_iam()
+    data_iam, all_lines, all_labes = get_data_iam()
 
     total = len(data_iam)
     print("El total de datos para el learning stage ", constants.training_stage , " es: ", total)

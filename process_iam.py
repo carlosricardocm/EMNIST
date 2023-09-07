@@ -11,7 +11,8 @@ from requests.auth import HTTPBasicAuth
 import requests
 import tarfile
 import collections
-
+import re
+from tensorflow.keras import Model
 
 import random
 import tensorflow as tf
@@ -520,31 +521,55 @@ def image_resize(image, width = None, height = None, inter = cv2.INTER_AREA):
     # return the resized image
     return resized
 
-def chop(image, offset,plot=False):
+def chop(image, offset=16, plot=False):
     #Convert image to integer values between 0 and 255
     image = image.astype(np.uint8)
     dim = None
-    (h, w) = image.shape[:2]
+    (height, weight) = image.shape[:2]
 
+    crop_size = 36
     images = []
-    for i in range(0, w, offset):
+    for i in range(0, weight, offset):
        #while offset is lower than image width do:
-       if i+28 < w:
+       if i+crop_size < weight:
         # slice image[initial_row:end_row , initial_columns:end_column]          
-        chop = np.array(image[0:28,i:i+16].copy())        
+        chop = np.array(image[0:height,i:i+crop_size].copy())                
+        cv2.imshow('chop_original',chop)        
+        #Find countours        
+        #--- choosing the right kernel
+        #--- kernel size of 25 rows (to join dots above letters 'i' and 'j')
+        #--- and 25 columns to join neighboring letters in words and neighboring words this values are adjusted to i am dataset
+        rect_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (25, 25))
+        dilation = cv2.dilate(chop, rect_kernel, iterations = 1)
+        contours, hierarchy = cv2.findContours(dilation, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+
+        #--- create an image for view_only with contours
+        img_rect = cv2.merge((chop,chop,chop))
+        #for cnt in contours:
+        x, y, w, h = cv2.boundingRect(contours[0])
+        cv2.rectangle(img_rect, (x, y), (x + w, y + h), (0, 255, 0), 2)
+        #cv2.imshow('bounded', img_rect)
+        # Crop the image based on the bounding rectangle       
+        cropped_image = chop[y:y+h, x:x+w]
+        # Resize the image to the EMNIST SIZE           
+        resized_image = cv2.resize(cropped_image, (28,28), interpolation = cv2.INTER_AREA)               
+        #cv2.imshow('final', resized_image)
+                   
+
         # The image is resized from 16x16 to 28X28 adding zeros to left and right size
         # 0 zero padded to the top, 0 zero padded to the bottom, 6 zero padded to left, 6 zero padded to right
-        chop = np.pad(chop, ((0,0),(6,6)), 'constant') 
+        #chop = np.pad(chop, ((0,0),(6,6)), 'constant')
+        
 
         if plot:
             dest_folder_images = os.path.join('images','iam')
-            img_name = os.path.join('chops' , dt.now().strftime("%Y%m%d-%H%M%S") + '.png' )
-            #im = Image.fromarray(chop)
-            #im.save(os.path.join(dest_folder_images, img_name))
+            img_name = os.path.join(os.path.join(dest_folder_images , dt.now().strftime("%Y%m%d-%H%M%S.%f")[:-3] + '.png' ) )
+            im = Image.fromarray(resized_image)
+            im.save(img_name)
             #png.from_array(chop, 'L;8').save(os.path.join(dest_folder_images, img_name))         
             #cv2.imshow('chop', chop) 
 
-        images.append(chop)
+        images.append(resized_image)
 
     return images
      
@@ -671,6 +696,120 @@ def msize_features(features, msize, min_value, max_value):
 
 def msize_features(features, msize, min_value, max_value):
     return np.round((msize-1)*(features-min_value) / (max_value-min_value)).astype(np.int16)
+
+
+def experiment2():
+    if os.path.isfile(smac.statsfilename):
+        df = pd.read_csv(smac.statsfilename, encoding='utf-8')
+        #Get row whit the min F1 value  
+        minValueIndex = df.idxmin()
+        tolerance = df.iloc[minValueIndex[0], 9]
+        sigma = df.iloc[minValueIndex[0], 10]
+        iota = df.iloc[minValueIndex[0], 11]
+        kappa = df.iloc[minValueIndex[0], 12]
+        msize = df.iloc[minValueIndex[0], 13]
+
+        iota = 0
+        kappa  = 0
+
+        all_images, all_lines, all_labes = convnet.get_data_iam(entrenamiento=True)
+
+        stages = constants.training_stages
+        training_stage = constants.training_stage
+        
+        for n in range(stages):
+            training_features_filename = constants.features_name + constants.training_suffix 
+            training_features_filename = constants.data_filename(training_features_filename, training_stage,  n)
+            training_labels_filename = constants.labels_name + constants.training_suffix
+            training_labels_filename = constants.data_filename(training_labels_filename, training_stage, n)           
+
+            trf = np.load(training_features_filename)
+            trl = np.load(training_labels_filename)
+
+            min_value = trf.min()
+            max_value = trf.max()
+
+            nmems = constants.n_labels
+            domain = constants.domain
+
+            ams = dict.fromkeys(range(nmems))
+            entropy = np.zeros((nmems, ), dtype=np.float64)
+         
+            for j in ams:
+                ams[j] = AssociativeMemory(domain, msize, tolerance, sigma, iota, kappa)
+        
+            trf_rounded = msize_features(trf, msize, min_value, max_value)
+
+            # Registration
+            for features, label in zip(trf_rounded, trl):
+                i = int(label)
+                ams[i].register(features)
+
+            # Calculate entropies
+            for j in ams:
+                entropy[j] = ams[j].entropy
+
+            # Recreate the exact same model, including its weights and the optimizer
+            model_prefix = constants.model_name           
+            model = tf.keras.models.load_model(constants.model_filename(model_prefix, constants.training_stage, n))
+
+            # Drop the autoencoder and the last layers of the full connected neural network part.
+            classifier = Model(model.input, model.output[0])
+            classifier.compile(optimizer='adam', loss='categorical_crossentropy', metrics='accuracy')
+    
+            model = Model(classifier.input, classifier.layers[-4].output)
+            model.summary()
+            #Create Classifier from Neural Network for the comparation with ams results
+            #snnet = convnet.ClassifierNeuralNetwork(constants.model_name, n)
+            
+            #features_total = model.predict(all_images)
+            
+            #min_value_iam = features_total.min()
+            #max_value_iam = features_total.max()
+            
+            for line, label in zip(all_lines, all_labes):
+                #imagesinline = []
+                #for image in line:
+                #    imagesinline.append(image)
+
+                imagesinline = np.array(line)
+                imagesinline = imagesinline.reshape((imagesinline.shape[0], 28, 28, 1))
+                imagesinline = imagesinline.astype('float32') / 255 
+
+                featuresline = model.predict(imagesinline)                               
+
+                letters = []                
+                for featurel in featuresline:
+                    memories = []
+                    weights = {}                  
+                    feature_ams = msize_features(featurel, msize, min_value, max_value)                    
+                    for k in ams:
+                        recognized, weight = ams[k].recognize(feature_ams)
+                        if recognized:
+                            memories.append(k)
+                            weights[k] = weight
+                       
+                    #At least one memory recognize the feature
+                    if len(memories) != 0:
+                        lwam = get_label(memories,weights,entropy)
+                        letters.append(lwam)
+                
+                lettersinline = translate(letters)
+                print(lettersinline)
+                print(label)
+                print("------\n")
+                    
+
+
+def translate(letters):
+    number_to_class = { 0: '0', 1:'1', 2:'2', 3:'3', 4:'4', 5:'5', 6:'6', 7:'7', 8:'8', 9:'9', 10:'A',
+                        11: 'B', 12:'C', 13:'D',14:'E',15:'F',16:'G',17:'H',18:'I',19:'J',20:'K',21:'L',
+                        22:'M',23:'N',24:'O',25:'P',26:'Q',27:'R',28:'S',29:'T',30:'U',31:'V',32:'W',
+                        33:'X',34:'Y',35:'Z',36:'a',37:'b',38:'d',39:'e',40:'f',41:'g',42:'h',43:'n',
+                        44:'q',45:'r',46:'t'}
+
+    res = [number_to_class[x] for x in letters]
+    return res
 
 
 def increase_data():
@@ -908,6 +1047,12 @@ def proccess_line(pd_line, pd_words, iam_sources_path, destination_folder):
             pd_line.id_line+'.png'
         )
 
+
+        words = pd_line.word
+        print(f"La linea sin modificar es:{words}" )
+        words = re.sub(r'[|"\'@#$,.:; ]', '', words)
+        print(f"La linea modificada es:{words}" )
+
         image_contrast = enhance_contrast_otsu(line_filename)
         image_slope = slope_correction(255-image_contrast)
         line_img_no_slant, angle, inc_positions = correct_slant(255-image_slope)
@@ -917,10 +1062,12 @@ def proccess_line(pd_line, pd_words, iam_sources_path, destination_folder):
                  logger.debug(f"Slant segunda correccion: {angle_2} | {inc_positions_2}")
 
         img = np.float32(line_img_no_slant)
-        img_rescaled = image_resize(img, height=28) 
-        images = chop(img_rescaled, offset=4)
+        #img_rescaled = image_resize(img, height=28) 
+        #cv2.imshow("img_rescalada", img_rescaled)
+        #cv2.imshow("imagen sin reescalar", img)
+        images = chop(img)
 
-        return images
+        return images, words
 
 def preprocess_iam():
 
@@ -1030,23 +1177,26 @@ def preprocess_iam():
         lines_selected = set(pd_words[pd_words.selected].line.values)
 
         images = []
-        size = len(list(pd_lines[(pd_lines.id_line.isin(lines_selected))].itertuples()))
-        loop = tqdm(total = size, position=0, leave=False)
-        contador = 0
+        words = []
+        #size = len(list(pd_lines[(pd_lines.id_line.isin(lines_selected))].itertuples()))
+        #loop = tqdm(total = size, position=0, leave=False)
+        #contador = 0
         #NOTE: CHECK IF I CAN PARALLELIZE THIS CODE
-        for line in pd_lines[(pd_lines.id_line.isin(lines_selected))].itertuples(): #& (pd_lines.partition == 'trn')].itertuples(): Esta parte se utilizaria si se divide en entrenamiento el dataset
+        for line in tqdm(list(pd_lines[(pd_lines.id_line.isin(lines_selected))].itertuples())): #& (pd_lines.partition == 'trn')].itertuples(): Esta parte se utilizaria si se divide en entrenamiento el dataset
             try:
-                imgs = proccess_line(line, pd_words, iam_sources_path, destination_folder)
+                imgs, word = proccess_line(line, pd_words, iam_sources_path, destination_folder)
                 images.append(imgs)
-                loop.set_description("Processing...".format(contador))
-                loop.update(1)
-                contador=contador+1
-            except:
+                words.append(word)
+                #loop.set_description("Processing...")
+                #loop.update(i)
+                #contador=contador+1
+            except ValueError as e:
+                print(e.args[0])
                 logger.info(f"LINE ERROR: {line}")
                 logger.info(f"Error: {sys.exc_info()[0]}")
-        loop.close()
-        
-        np.savez(os.path.join(destination_folder,iam_filename), iam_filename=images)
+        #loop.close()
+        #AQUI TENGO QUE SALVAR TAMBIÉN LOS LABELS DE LAS LINEAS
+        np.savez(os.path.join(destination_folder,iam_filename), images=images, words=words)
         return os.path.join(destination_folder,iam_filename)
     #If we had already the preproceced IAM file only return the file
     else:
