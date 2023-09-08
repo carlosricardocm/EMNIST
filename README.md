@@ -21,6 +21,8 @@ The following libraries need to be installed beforehand:
 * opencv (conda install opencv)
 * tqdm (conda install tqdm)
 * clint (pip install clint)
+* levenshtein (pip install python-Levenshtein)
+
 
 * for preprocing the images in an environment without graphical interface it is necesary execute in the terminal the following instruction:
 * export QT_QPA_PLATFORM=offscreen 

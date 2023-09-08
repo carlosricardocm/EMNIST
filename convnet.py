@@ -446,6 +446,7 @@ def obtain_features_iam(model_prefix, features_prefix, data_prefix,
 
     for n in range(stages):
 
+       
         i = int(n*step)
         j = (i + step - 1) 
 

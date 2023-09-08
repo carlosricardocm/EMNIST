@@ -13,6 +13,8 @@ import tarfile
 import collections
 import re
 from tensorflow.keras import Model
+from Levenshtein import distance as lev
+
 
 import random
 import tensorflow as tf
@@ -546,7 +548,8 @@ def chop(image, offset=16, plot=False):
         #--- create an image for view_only with contours
         img_rect = cv2.merge((chop,chop,chop))
         
-        for cnt in contours:
+        #for cnt in contours:
+        if contours:
             x, y, w, h = cv2.boundingRect(contours[0])
             cv2.rectangle(img_rect, (x, y), (x + w, y + h), (0, 255, 0), 2)
             #cv2.imshow('bounded', img_rect)
@@ -712,11 +715,17 @@ def experiment2():
         kappa = df.iloc[minValueIndex[0], 12]
         msize = df.iloc[minValueIndex[0], 13]
 
-        #iota = 0
-        #kappa  = 0
+        iota = 0.1
+        kappa  = 0.1
 
         all_images, all_lines, all_labes = convnet.get_data_iam(entrenamiento=True)
 
+        #for line, label in zip(all_lines, all_labes):
+        #    print(f"label: {label}") 
+        #    for i, image in enumerate(line):
+        #        cv2.imshow(str(i), image)
+        #        print("hasta aqui")
+              
         stages = constants.training_stages
         training_stage = constants.training_stage
         
@@ -798,10 +807,12 @@ def experiment2():
                         letters.append(lwam)
                 
                 lettersinline = translate(letters)
-                print(lettersinline)
-                print(label)
-                print("------\n")
+                lv = lev(''.join(lettersinline), label)
+                #print(lettersinline)                
+                #print(label)
+                #print(f"la distancia de levenstain es: {lev(''.join(lettersinline), label)}")
                     
+
 
 
 def translate(letters):
@@ -864,8 +875,8 @@ def increase_data():
             min_value = trf.min()
             max_value = trf.max()
 
-            min_value_iam = features_iam.min()
-            max_value_iam = features_iam.max()
+            #min_value_iam = features_iam.min()
+            #max_value_iam = features_iam.max()
 
             nmems = constants.n_labels
             domain = constants.domain
@@ -905,7 +916,7 @@ def increase_data():
                 #feature = snnet.encoder.predict(np.reshape(original_image, (1,28, 28, 1)))
                 #feature = msize_features(feature[0], msize, feature[0].min(), feature[0].max_value)
                 #feature = np.reshape(feature[0], (1, len(feature[0])))               
-                feature_ams = msize_features(feature_image, msize, min_value_iam, max_value_iam)
+                feature_ams = msize_features(feature_image, msize, min_value, max_value)
                 for k in ams:
                     recognized, weight = ams[k].recognize(feature_ams)
                     if recognized:
@@ -1053,7 +1064,7 @@ def proccess_line(pd_line, pd_words, iam_sources_path, destination_folder):
 
         words = pd_line.word
         #print(f"La linea sin modificar es:{words}" )
-        words = re.sub(r'[|"\'@#$,.-_+*%/&#!:; ]', '', words)
+        words = re.sub("[^A-Za-z0-9]","", words)
         #print(f"La linea modificada es:{words}" )
 
         image_contrast = enhance_contrast_otsu(line_filename)
@@ -1189,7 +1200,8 @@ def preprocess_iam():
             try:
                 imgs, word = proccess_line(line, pd_words, iam_sources_path, destination_folder)
                 images.append(imgs)
-                words.append(word)
+                words.append(word)              
+                #print(f"word: {word}")
                 #loop.set_description("Processing...")
                 #loop.update(i)
                 #contador=contador+1
