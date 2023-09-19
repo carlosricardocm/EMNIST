@@ -24,7 +24,8 @@ import png
 import datetime
 import preprocess_emnist as pre
 from datetime import datetime as dt
-
+import matplotlib.pyplot as plt
+import seaborn
 
 import numpy as np
 import random
@@ -582,6 +583,9 @@ def chop(image, offset=16, plot=False):
 def CountFrequency(arr):
     return collections.Counter(arr)
 
+
+    
+
 def count_frecuencies():
     data = np.load(pre.preprocess_emnist())
     train_images = data['train_images']
@@ -704,7 +708,65 @@ def msize_features(features, msize, min_value, max_value):
     return np.round((msize-1)*(features-min_value) / (max_value-min_value)).astype(np.int16)
 
 
+none = 62
+p_weight = 0.5
+all_probs = []
+_INDI_PROBS_PREFIX = 'frequencies'
+_COND_PROBS_PREFIX = 'bigrams'
+_CTOLAB_PROBS_PREFIX = 'ctolabels'
+_LTOCHARS_PROBS_PREFIX = 'ltochars'
+
+
+def load_probs(prefix):    
+    filename = constants.data_filename(prefix, "0")
+    probs = np.load(filename)
+    return probs
+
+
+def translate_char_to_label(sequence):
+    seq = []
+    _c_to_l = c_to_l[()]
+    for i in sequence:
+        seq.append(_c_to_l[i])
+    return seq
+
+
+def remove_errors(sequence):
+    sequence = translate_char_to_label(sequence)
+    #seq_cleaned = []
+    labels = sequence
+    cleaned = []
+    n = len(labels)
+    previous = none
+    for i in range(n):
+        current = labels[i]
+        nexto = none if i == (n - 1) else labels[i+1]
+        p = current_prob(previous, current, nexto)
+        all_probs.append(p)
+        if p >= i_probs[current]:
+        #if p < i_probs[current]:
+            cleaned.append(l_to_c[current])
+            previous = current
+    #seq_cleaned.append(cleaned)
+    return cleaned
+
+def current_prob(previous, current,  nexto):
+    pCP = i_probs[current] if previous == none \
+        else c_probs[previous, current]
+    pCN = i_probs[current] if nexto == none \
+        else c_probs[current, nexto]*i_probs[current]/i_probs[nexto]
+    p = p_weight*pCP + (1.0 - p_weight)*pCN
+    return p
+
+
+def load_probs(prefix):    
+    filename = constants.data_filename(prefix, "0")
+    probs = np.load(filename,  allow_pickle=True)
+    return probs
+
+
 def experiment2():
+    
     if os.path.isfile(smac.statsfilename):
         df = pd.read_csv(smac.statsfilename, encoding='utf-8')
         #Get row whit the min F1 value  
@@ -714,20 +776,39 @@ def experiment2():
         iota = df.iloc[minValueIndex[0], 11]
         kappa = df.iloc[minValueIndex[0], 12]
         msize = df.iloc[minValueIndex[0], 13]
+        
+        #iota = 0
+        #kappa = 0
 
-        iota = 0.1
-        kappa  = 0.1
+        #Bigram Variables:
+        #i_probs holds frequencies of each iam character (62), c_probs has bigrams probabilities, 
+        #c_to_l translate characters to labels(numbers) y l_to_c translates labels to numbers
+        global i_probs
+        global c_probs
+        global c_to_l
+        global l_to_c
+        i_probs = load_probs(_INDI_PROBS_PREFIX)
+        c_probs = load_probs(_COND_PROBS_PREFIX)
+        l_to_c  = load_probs(_LTOCHARS_PROBS_PREFIX)   
+        c_to_l  = load_probs(_CTOLAB_PROBS_PREFIX)
+            
 
-        all_images, all_lines, all_labes = convnet.get_data_iam(entrenamiento=True)
+        #iota = 0.1
+        #kappa  = 0.1
 
-        #for line, label in zip(all_lines, all_labes):
-        #    print(f"label: {label}") 
-        #    for i, image in enumerate(line):
-        #        cv2.imshow(str(i), image)
-        #        print("hasta aqui")
+        all_images, all_lines, all_labels = convnet.get_data_iam(entrenamiento=True)
+
+  
               
         stages = constants.training_stages
         training_stage = constants.training_stage
+
+        tam = len(all_labels)
+        levenstain_memories_normal = [ [0]*tam for i in range(stages)]
+        levenstain_memories_bigram = [ [0]*tam for i in range(stages)]
+        levenstain_net_normal = [ [0]*tam for i in range(stages)]
+        levenstain_net_bigram = [ [0]*tam for i in range(stages)]
+
         
         for n in range(stages):
             training_features_filename = constants.features_name + constants.training_suffix 
@@ -772,46 +853,127 @@ def experiment2():
             model = Model(classifier.input, classifier.layers[-4].output)
             model.summary()
             #Create Classifier from Neural Network for the comparation with ams results
-            #snnet = convnet.ClassifierNeuralNetwork(constants.model_name, n)
+            snnet = convnet.ClassifierNeuralNetwork(constants.model_name, n)
             
             #features_total = model.predict(all_images)
             
             #min_value_iam = features_total.min()
             #max_value_iam = features_total.max()
             
-            for line, label in zip(all_lines, all_labes):
-                #imagesinline = []
-                #for image in line:
-                #    imagesinline.append(image)
-
-                imagesinline = np.array(line)
-                imagesinline = imagesinline.reshape((imagesinline.shape[0], 28, 28, 1))
-                imagesinline = imagesinline.astype('float32') / 255 
-
-                featuresline = model.predict(imagesinline)                               
-
-                letters = []                
-                for featurel in featuresline:
-                    memories = []
-                    weights = {}                  
-                    feature_ams = msize_features(featurel, msize, min_value, max_value)                    
-                    for k in ams:
-                        recognized, weight = ams[k].recognize(feature_ams)
-                        if recognized:
-                            memories.append(k)
-                            weights[k] = weight
-                       
-                    #At least one memory recognize the feature
-                    if len(memories) != 0:
-                        lwam = get_label(memories,weights,entropy)
-                        letters.append(lwam)
+            paro = 0
+            for i, (line, label) in enumerate(zip(all_lines, all_labels)):
+                if paro !=  -1:
                 
-                lettersinline = translate(letters)
-                lv = lev(''.join(lettersinline), label)
-                #print(lettersinline)                
-                #print(label)
-                #print(f"la distancia de levenstain es: {lev(''.join(lettersinline), label)}")
+                    imagesinline = np.array(line)
+                    imagesinline = imagesinline.reshape((imagesinline.shape[0], 28, 28, 1))
+                    imagesinline = imagesinline.astype('float32') / 255 
+
+                    featuresline = model.predict(imagesinline)                               
+
                     
+
+                    letters_memories = []                
+                                   
+
+                    predicciones = snnet.classifier.predict(featuresline)
+                    letters_net = np.argmax(predicciones, axis=1)
+                    for featurel in featuresline:                        
+                        memories = []
+                        weights = {}
+                        
+                        
+                        feature_ams = msize_features(featurel, msize, min_value, max_value)                    
+                        for k in ams:
+                            recognized, weight = ams[k].recognize(feature_ams)
+                            if recognized:
+                                memories.append(k)
+                                weights[k] = weight
+                        
+                        #At least one memory recognize the feature
+                        if len(memories) != 0:
+                            lwam = get_label(memories,weights,entropy)
+                            letters_memories.append(lwam)
+                    
+                    memory_line = ''.join(translate(letters_memories))
+                    net_line = ''.join(translate(letters_net))
+                    bigram_memory_line = ''.join(remove_errors(memory_line))
+                    bigram_net_line = ''.join(remove_errors(net_line))
+                    #print("original", label)
+                    #print("memories", memory_line )
+                    #print("bigram_memories", bigram_memory_line )
+                    #print("net", net_line)
+                    #print("net_memories", bigram_net_line )
+                    
+                    lv_normal_memory = lev(memory_line, label)
+                    lv_bigram_memory = lev(bigram_memory_line, label)
+                    lv_normal_net = lev(net_line, label)
+                    lv_bigram_net = lev(bigram_net_line, label)
+                    levenstain_memories_normal[n][i] =lv_normal_memory
+                    levenstain_memories_bigram[n][i] =lv_bigram_memory
+                    levenstain_net_normal[n][i] =lv_normal_net
+                    levenstain_net_bigram[n][i] =lv_bigram_net
+                    
+                    paro = paro + 1
+                    #print(lettersinline)                
+                    #print(label)
+                    #print(f"la distancia de levenstain es: {lev(''.join(lettersinline), label)}")
+        #Aqui lo guardamos
+        data_prefix = constants.data_name
+        levenstain_suffix = constants.levenstein_suffix
+        memories_suffix = '-memories'
+        bigram_suffix = '-bigram'
+        net_suffix = '-net'
+        normal_suffix = '-normal'
+        bigram_suffix = '-bigram'
+
+        levenstain_file = constants.data_filename(data_prefix+levenstain_suffix+memories_suffix+normal_suffix, constants.training_stage, constants.training_stage)        
+        np.save(levenstain_file, np.array(levenstain_memories_normal))    
+        levenstain_file = constants.data_filename(data_prefix+levenstain_suffix+memories_suffix+bigram_suffix, constants.training_stage, constants.training_stage)        
+        np.save(levenstain_file, np.array(levenstain_memories_bigram))                
+        levenstain_file = constants.data_filename(data_prefix+levenstain_suffix+net_suffix+normal_suffix, constants.training_stage, constants.training_stage)        
+        np.save(levenstain_file, np.array(levenstain_net_normal))
+        levenstain_file = constants.data_filename(data_prefix+levenstain_suffix+net_suffix+bigram_suffix, constants.training_stage, constants.training_stage)        
+        np.save(levenstain_file, np.array(levenstain_net_bigram))
+        plot_levenstein()
+
+def plot_levenstein():
+    
+    data_prefix = constants.data_name
+    levenstain_suffix = constants.levenstein_suffix
+    memories_suffix = '-memories'
+    bigram_suffix = '-bigram'
+    net_suffix = '-net'
+    normal_suffix = '-normal'
+    bigram_suffix = '-bigram'
+
+    levenstain_file = constants.data_filename(data_prefix+levenstain_suffix+memories_suffix+normal_suffix, constants.training_stage, constants.training_stage)        
+    memories = np.load(levenstain_file)    
+    levenstain_file = constants.data_filename(data_prefix+levenstain_suffix+memories_suffix+bigram_suffix, constants.training_stage, constants.training_stage)        
+    memories_bigram = np.load(levenstain_file)    
+    levenstain_file = constants.data_filename(data_prefix+levenstain_suffix+net_suffix+normal_suffix, constants.training_stage, constants.training_stage)        
+    net = np.load(levenstain_file)    
+    levenstain_file = constants.data_filename(data_prefix+levenstain_suffix+net_suffix+bigram_suffix, constants.training_stage, constants.training_stage)        
+    net_bigram = np.load(levenstain_file) 
+
+    plt.clf()
+    #STAGES
+    x =  [0,1,2,3,4,5,6,7,8,9]
+    #DATA FROM LEVENSTHAIN
+    y_memories = np.sum(memories,axis=1)    
+    y_memories_bigram = np.sum(memories_bigram,axis=1)
+    y_net = np.sum(net,axis=1)        
+    y_net_bigram = np.sum(net_bigram,axis=1)    
+
+    plt.xlabel(('Stages'))
+    plt.ylabel(('Media Levenstain'))
+    
+    plt.plot(x, y_memories, label = "Memories Normal")
+    plt.plot(x, y_memories_bigram, label = "Memories with bigram")
+    plt.plot(x, y_net, label = "Net")
+    plt.plot(x, y_net_bigram, label = "Net with bigram")
+    plt.legend()
+    graph_filename = constants.picture_filename('levenstein' + ('-english'), "0")
+    plt.savefig(graph_filename, dpi=600)   
 
 
 
