@@ -19,7 +19,6 @@ import numpy as np
 import seaborn
 import constants
 import convnet 
-import nltk
 import collections
 from collections import Counter
 

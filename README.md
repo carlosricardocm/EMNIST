@@ -22,6 +22,7 @@ The following libraries need to be installed beforehand:
 * tqdm (conda install tqdm)
 * clint (pip install clint)
 * levenshtein (pip install python-Levenshtein)
+* searbon (pip install seaborn)
 
 
 * for preprocing the images in an environment without graphical interface it is necesary execute in the terminal the following instruction:
