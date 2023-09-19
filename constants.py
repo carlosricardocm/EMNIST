@@ -203,6 +203,7 @@ filling_suffix = '-filling'
 testing_suffix = '-testing'
 memory_suffix = '-memories'
 learning_suffix = '-learning'
+levenstein_suffix = '-levenstein'
 iam_suffix = '-iam'
 
 # Model suffixes.

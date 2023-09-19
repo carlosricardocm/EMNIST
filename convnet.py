@@ -117,14 +117,17 @@ def split(a, n):
     return (a[i*k+min(i, m):(i+1)*k+min(i+1, m)] for i in range(n))
 
 #Learning stage starts in 0
-def get_data_iam(entrenamiento=False ):
+def get_data_iam(entrenamiento=False, bigram=False ):
     
     # Load iam data, as part of TensorFlow.
     file_path = iam.preprocess_iam()
   
     data = np.load(file_path, allow_pickle=True)
     
-    print(len(data['images']))
+    if bigram:
+        return data['words']
+
+    #print(len(data['images']))
     
     #Divide the iam dataset into the number of learning stages, plus one partition for testing 
     images_stage = list(split(data['images'], constants.num_stages_learning + 1)) 
@@ -136,6 +139,8 @@ def get_data_iam(entrenamiento=False ):
     all_labels = []
     
     stage = int(constants.training_stage)
+
+   
 
     if entrenamiento:
         stage = constants.num_stages_learning 
