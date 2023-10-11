@@ -660,6 +660,12 @@ def increase_data(domain,experiment):
 
 def experiment2(domain,experiment):     
     iam.experiment2()    
+    #iam.plot_learning()
+    #iam.plot_levenstein()
+    return ""
+
+def plot_learning(domain,experiment):     
+    iam.plot_learning()        
     return ""
 
 def test_memories(domain, experiment):
@@ -1373,6 +1379,8 @@ def main(action, training_stage):#, occlusion = None, bar_type= None, tolerance 
         save_learn_params(best_memory_size, best_filling_percent)
     elif (action == constants.EXP_2) :
         experiment2(constants.domain, action)
+    elif (action == constants.EXP_3) :
+        plot_learning(constants.domain, action)
 
 
 

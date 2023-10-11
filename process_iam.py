@@ -765,9 +765,10 @@ def load_probs(prefix):
     return probs
 
 
-def experiment2():
-    
+def experiment2():        
+
     if os.path.isfile(smac.statsfilename):
+        
         df = pd.read_csv(smac.statsfilename, encoding='utf-8')
         #Get row whit the min F1 value  
         minValueIndex = df.idxmin()
@@ -936,8 +937,74 @@ def experiment2():
         np.save(levenstain_file, np.array(levenstain_net_bigram))
         plot_levenstein()
 
+def plot_learning():
+    data_prefix = constants.data_name
+    levenstain_suffix = constants.levenstein_suffix
+    memories_suffix = '-memories'
+    bigram_suffix = '-bigram'
+    net_suffix = '-net'
+    normal_suffix = '-normal'
+    bigram_suffix = '-bigram'
+
+    memorias = []
+    memorias_bigram = []
+    net_ = []
+    net_bigram_ = []
+
+    for i in range(constants.num_stages_learning):
+        i = str(i)
+        levenstain_file = constants.data_filename(data_prefix+levenstain_suffix+memories_suffix+normal_suffix, i, i)        
+        memories = np.load(levenstain_file)    
+        levenstain_file = constants.data_filename(data_prefix+levenstain_suffix+memories_suffix+bigram_suffix, i, i)        
+        memories_bigram = np.load(levenstain_file)    
+        levenstain_file = constants.data_filename(data_prefix+levenstain_suffix+net_suffix+normal_suffix, i, i)        
+        net = np.load(levenstain_file)    
+        levenstain_file = constants.data_filename(data_prefix+levenstain_suffix+net_suffix+bigram_suffix, i, i)        
+        net_bigram = np.load(levenstain_file)
+
+        #y_memories = np.sum(memories,axis=1) 
+        #y_memories = np.sum(y_memories) / len(y_memories)
+        y_memories = np.median(memories,axis=1) 
+        y_memories = np.median(y_memories)
+        memorias.append(y_memories)
+
+        y_memories_bigram = np.median(memories_bigram,axis=1)
+        y_memories_bigram = np.median(y_memories_bigram)
+        #y_memories_bigram = np.sum(y_memories_bigram) / len(y_memories_bigram)
+        memorias_bigram.append(y_memories_bigram)
+
+        y_net = np.median(net,axis=1)        
+        y_net = np.median(y_net)     
+        #y_net = np.sum(y_net) / len(y_net)
+        net_.append(y_net)
+
+        y_net_bigram = np.median(net_bigram,axis=1)
+        y_net_bigram = np.median(y_net_bigram)
+
+        #y_net_bigram = np.sum(y_net_bigram) / len(y_net_bigram)
+        net_bigram_.append(y_net_bigram)
+
+    plt.clf()
+    #STAGES
+    x =  [0,1,2,3,4]
+    x_label =  ["Stage 1", "Stage 2", "Stage 3", "Stage 4", "Stage 5"]
+    #plt.xlabel(('Learning stages'))
+    plt.ylabel(('Levenshtein distance per learning stage'))
+    
+    plt.plot(x, memorias[::-1], label = "Memories")
+    plt.plot(x, memorias_bigram[::-1], label = "Memories with bigram")
+    plt.plot(x, net_[::-1], label = "Net")
+    plt.plot(x, net_bigram_[::-1], label = "Net with bigram")
+    plt.xticks(x, x_label )
+    plt.legend()
+    #plt.show()
+    graph_filename = constants.picture_filename('levenstein-total-learning-stages', constants.training_stage)
+    plt.savefig(graph_filename, dpi=600) 
+
 def plot_levenstein():
     
+    #constants.training_stage = 0
+
     data_prefix = constants.data_name
     levenstain_suffix = constants.levenstein_suffix
     memories_suffix = '-memories'
@@ -954,26 +1021,39 @@ def plot_levenstein():
     net = np.load(levenstain_file)    
     levenstain_file = constants.data_filename(data_prefix+levenstain_suffix+net_suffix+bigram_suffix, constants.training_stage, constants.training_stage)        
     net_bigram = np.load(levenstain_file) 
+    
 
     plt.clf()
     #STAGES
     x =  [0,1,2,3,4,5,6,7,8,9]
     #DATA FROM LEVENSTHAIN
-    y_memories = np.sum(memories,axis=1)    
-    y_memories_bigram = np.sum(memories_bigram,axis=1)
-    y_net = np.sum(net,axis=1)        
-    y_net_bigram = np.sum(net_bigram,axis=1)    
+    #y_memories = np.sum(memories,axis=1) 
+    y_memories = np.median(memories,axis=1) 
+    y_memories_bigram = np.median(memories_bigram,axis=1) 
+    y_net = np.median(net,axis=1)
+    y_net_bigram = np.median(net_bigram,axis=1) 
 
-    plt.xlabel(('Stages'))
-    plt.ylabel(('Media Levenstain'))
+    #fig, ax = plt.subplots()
+    columnas = [y_memories,y_memories_bigram,y_net,y_net_bigram]
+    plt.boxplot(columnas)
+    plt.ylabel(('Levenshtein distance'))    
+    plt.xticks([1, 2, 3, 4], ['Memories', 'Memories with bigram', 'Net', 'Net with bigram'])
+    graph_filename = constants.picture_filename('levenstein' + ('-english'), constants.training_stage)
+    plt.savefig(graph_filename, dpi=600) 
+    #ax.boxplot(columnas)    
+    #plt.xticks(x)
     
-    plt.plot(x, y_memories, label = "Memories Normal")
-    plt.plot(x, y_memories_bigram, label = "Memories with bigram")
-    plt.plot(x, y_net, label = "Net")
-    plt.plot(x, y_net_bigram, label = "Net with bigram")
-    plt.legend()
-    graph_filename = constants.picture_filename('levenstein' + ('-english'), "0")
-    plt.savefig(graph_filename, dpi=600)   
+    
+    #plt.xlabel(('Stages'))
+    #plt.ylabel(('Media Levenstain'))
+    
+    #plt.plot(x, y_memories, label = "Memories Normal")
+    #plt.plot(x, y_memories_bigram, label = "Memories with bigram")
+    #plt.plot(x, y_net, label = "Net")
+    #plt.plot(x, y_net_bigram, label = "Net with bigram")
+    #plt.legend()
+    #graph_filename = constants.picture_filename('levenstein' + ('-english'), constants.training_stage)
+    #plt.savefig(graph_filename, dpi=600)   
 
 
 
