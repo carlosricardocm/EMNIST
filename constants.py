@@ -212,7 +212,7 @@ decoder_suffix = '-autoencoder'
 
 
 training_stages = 10
-num_stages_learning = 5
+num_stages_learning = 6
 
 am_testing_percent = (100 / training_stages) / 100
 nn_training_percent = 0.57  # 0.10 + 0.57 = 0.67
