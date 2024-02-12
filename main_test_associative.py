@@ -35,7 +35,7 @@ import SMAC_run_sameconfigforall as smac
 import process_iam as iam
 import os
 
-os.environ['CUDA_VISIBLE_DEVICES']='1'
+
 
 # Translation
 gettext.install('ame', localedir=None, codeset=None, names=None)
@@ -1392,6 +1392,8 @@ if __name__== "__main__" :
     for all data (-f), one to characterize the initial features (-c), and one to run
     the experiments (-e).
     """
+
+    os.environ['CUDA_VISIBLE_DEVICES']='1'
 
     num_stages = constants.num_stages_learning
     stages = []
