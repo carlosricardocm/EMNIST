@@ -1,7 +1,6 @@
 # Entropic Associative Memory for Manuscript Symbols
-This repository contains the data and procedures to replicate the experiments presented in the paper
+This repository contains the data and procedures to develop a system for recognice handwrittend manuscripts using associative weighted memories.
 
-Rafael Morales, Noé Hernández, Ricardo Cruz, Victor D. Cruz and Luis A. Pineda. 2021. “Entropic Associative Memory for Manuscript Symbols”.
 
 The code was written in Python 3.8.10 and was run on an Alienware Aurora R5 computer with the following specifications:
 * CPU: Intel Core i7-6700 at 3.40 GHz
